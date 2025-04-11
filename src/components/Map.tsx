@@ -13,8 +13,8 @@ interface MapProps {
 }
 
 export default function Map({
-  center = [51.505, -0.09],
-  zoom = 13,
+  center = [3.139, 101.6869], // Kuala Lumpur coordinates
+  zoom = 12,
   selectedRoute = "all",
 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);

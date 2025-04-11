@@ -12,16 +12,18 @@ export default function MapWrapper() {
   });
 
   return (
-    <>
-      <RouteSelector
-        selectedRoute={selectedRoute}
-        onRouteChange={setSelectedRoute}
-      />
-      <div className="w-full h-[calc(100%-60px)]">
+    <div className="relative w-full h-full">
+      <div className="z-10 relative">
+        <RouteSelector
+          selectedRoute={selectedRoute}
+          onRouteChange={setSelectedRoute}
+        />
+      </div>
+      <div className="w-full h-[calc(100%-60px)] relative z-0">
         <Suspense fallback={<div>Loading...</div>}>
           <Map selectedRoute={selectedRoute} />
         </Suspense>
       </div>
-    </>
+    </div>
   );
 }
