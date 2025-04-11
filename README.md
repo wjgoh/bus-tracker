@@ -1,5 +1,5 @@
 # Bus Tracker Application
-
+> crazy this is all ai generated 🗣️
 A real-time bus tracking application built with Next.js, React, and Leaflet for interactive mapping.
 
 ## Features
