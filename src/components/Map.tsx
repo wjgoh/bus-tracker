@@ -54,8 +54,12 @@ export default function Map({
           <Marker
             key={vehicle.vehicleId}
             position={[
-              parseFloat(vehicle.latitude),
-              parseFloat(vehicle.longitude),
+              !isNaN(parseFloat(vehicle.latitude))
+                ? parseFloat(vehicle.latitude)
+                : 0,
+              !isNaN(parseFloat(vehicle.longitude))
+                ? parseFloat(vehicle.longitude)
+                : 0,
             ]}
             icon={getBusIcon()}
           >
