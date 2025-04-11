@@ -25,7 +25,15 @@ export async function GET() {
 
     // Extract and simplify vehicle position information
     const vehiclePositions = feed.entity
-      .filter((entity) => entity.vehicle)
+      .filter(
+        (
+          entity
+        ): entity is GtfsRealtimeBindings.transit_realtime.IFeedEntity & {
+          vehicle: NonNullable<
+            GtfsRealtimeBindings.transit_realtime.IFeedEntity["vehicle"]
+          >;
+        } => entity.vehicle !== null && entity.vehicle !== undefined
+      )
       .map((entity) => ({
         tripId: entity.vehicle.trip?.tripId || "N/A",
         routeId: entity.vehicle.trip?.routeId || "N/A",
