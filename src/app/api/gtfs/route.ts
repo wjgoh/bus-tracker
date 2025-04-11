@@ -24,9 +24,8 @@ export async function GET() {
     );
 
     // Extract and simplify vehicle position information
-    const vehiclePositions = feed.entity
-      .filter((entity) => entity.vehicle)
-      .map((entity) => ({
+    const vehiclePositions = feed.entity.filter((entity) => entity.vehicle);
+    /*.map((entity) => ({
         tripId: entity.vehicle.trip?.tripId || "N/A",
         routeId: entity.vehicle.trip?.routeId || "N/A",
         vehicleId: entity.vehicle.vehicle?.id || "N/A",
@@ -38,7 +37,7 @@ export async function GET() {
         congestion: entity.vehicle.congestionLevel || "N/A",
         stopId: entity.vehicle.stopId || "N/A",
         status: entity.vehicle.currentStatus || "N/A",
-      }));
+      }));*/
 
     return NextResponse.json({ success: true, data: vehiclePositions });
   } catch (error) {
