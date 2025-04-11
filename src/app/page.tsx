@@ -1,4 +1,3 @@
-import Image from "next/image";
 import MapWrapper from "@/components/MapWrapper";
 import TrackButton from "@/components/TrackButton";
 
