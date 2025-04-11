@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVehicleStore } from "@/store/vehicleStore";
@@ -6,6 +6,22 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBusSimple } from "@fortawesome/free-solid-svg-icons";
 import { divIcon } from "leaflet";
 import { renderToString } from "react-dom/server";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface MapProps {
   center?: [number, number];
@@ -15,13 +31,21 @@ interface MapProps {
 export default function Map({ center = [51.505, -0.09], zoom = 13 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);
   const [selectedRoute, setSelectedRoute] = useState<string>("all");
+  const [open, setOpen] = useState(false);
 
   const filteredVehicles =
     selectedRoute === "all"
       ? vehicles
       : vehicles.filter((vehicle) => vehicle.routeId === selectedRoute);
 
-  const routeOptions = [...new Set(vehicles.map((v) => v.routeId))];
+  // Get unique route options and format them for the ComboBox
+  const routeOptions = [
+    { value: "all", label: "All Routes" },
+    ...Array.from(new Set(vehicles.map((v) => v.routeId)))
+      .filter(Boolean)
+      .sort()
+      .map((route) => ({ value: route, label: route })),
+  ];
 
   const getBusIcon = () => {
     const iconHtml = renderToString(
@@ -38,38 +62,65 @@ export default function Map({ center = [51.505, -0.09], zoom = 13 }: MapProps) {
     });
   };
 
+  // Outer wrapper with controls fixed at the top
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "10px", backgroundColor: "white" }}>
-        <div
-          style={{
-            fontSize: "14px",
-            color: "#666",
-            display: "flex",
-            gap: "10px",
-            alignItems: "center",
-          }}
-        >
-          <div>Buses Located: {filteredVehicles.length}</div>
-          <select
-            value={selectedRoute}
-            onChange={(e) => setSelectedRoute(e.target.value)}
-            style={{
-              padding: "4px",
-              borderRadius: "4px",
-              border: "1px solid #ccc",
-            }}
-          >
-            <option value="all">All Routes</option>
-            {routeOptions.map((route) => (
-              <option key={route} value={route}>
-                {route}
-              </option>
-            ))}
-          </select>
+    <div className="flex h-full flex-col">
+      {/* Control panel above the map */}
+      <div className="bg-background p-4 border-b">
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground">
+            Buses Located: {filteredVehicles.length}
+          </div>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-[200px] justify-between"
+              >
+                {selectedRoute === "all"
+                  ? "All Routes"
+                  : selectedRoute || "Select route..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0">
+              <Command>
+                <CommandInput placeholder="Search route..." />
+                <CommandList>
+                  <CommandEmpty>No route found.</CommandEmpty>
+                  <CommandGroup>
+                    {routeOptions.map((route) => (
+                      <CommandItem
+                        key={route.value}
+                        value={route.value}
+                        onSelect={(currentValue) => {
+                          setSelectedRoute(currentValue);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedRoute === route.value
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        {route.label}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
-      <div style={{ flex: 1 }}>
+
+      {/* Map container */}
+      <div className="flex-1">
         <MapContainer
           center={center}
           zoom={zoom}
