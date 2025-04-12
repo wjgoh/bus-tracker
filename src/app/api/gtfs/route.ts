@@ -50,10 +50,15 @@ export async function GET(request: Request) {
         lastSeen: new Date().toISOString(),
       }));
 
-    // Save the vehicle data to the database
+    // Save the vehicle data to the database and update inactive vehicles
     try {
       // Get the base URL from the request
       const baseUrl = new URL(request.url).origin;
+
+      // Get all active vehicle IDs from the current API response
+      const activeVehicleIds = vehiclePositions.map(
+        (vehicle) => vehicle.vehicleId
+      );
 
       // Use the fetch API to call our saveVehicleData endpoint
       const saveUrl = `${baseUrl}/api/saveVehicleData`;
@@ -63,7 +68,10 @@ export async function GET(request: Request) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(vehiclePositions),
+        body: JSON.stringify({
+          vehicles: vehiclePositions,
+          activeVehicleIds: activeVehicleIds,
+        }),
       });
 
       if (!saveResponse.ok) {

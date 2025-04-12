@@ -25,7 +25,10 @@ export type VehicleData = {
 };
 
 // Function to save vehicle data to the database
-export async function saveVehicleData(vehicles: VehicleData[]) {
+export async function saveVehicleData(
+  vehicles: VehicleData[],
+  activeVehicleIds?: string[]
+) {
   try {
     // Begin a transaction
     const client = await db.connect();
@@ -69,6 +72,23 @@ export async function saveVehicleData(vehicles: VehicleData[]) {
         ];
 
         await client.query(query, values);
+      }
+
+      // If activeVehicleIds is provided, mark vehicles not in the list as inactive
+      if (activeVehicleIds && activeVehicleIds.length > 0) {
+        // Update all vehicles not in the activeVehicleIds list to inactive
+        const placeholders = activeVehicleIds
+          .map((_, i) => `$${i + 1}`)
+          .join(",");
+        await client.query(
+          `
+          UPDATE vehicle_positions
+          SET is_active = false, updated_at = NOW()
+          WHERE vehicle_id NOT IN (${placeholders})
+          AND is_active = true
+          `,
+          activeVehicleIds
+        );
       }
 
       await client.query("COMMIT");
