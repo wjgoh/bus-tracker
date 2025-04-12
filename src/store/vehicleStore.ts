@@ -80,13 +80,24 @@ export const useVehicleStore = create<VehicleStore>((set, get) => ({
   loadVehiclesFromDatabase: async () => {
     set({ isLoading: true });
     try {
-      // Fetch all vehicle data from the database
-      const result = await getAllVehicleData();
+      // Fetch all vehicle data from the database using the API
+      const response = await fetch("/api/getVehicleData");
+      const result = await response.json();
 
       if (result.success && result.data) {
+        // Process the data to ensure proper types
+        const vehicles = result.data.map((vehicle: any) => ({
+          ...vehicle,
+          // Convert string 'true'/'false' to boolean if necessary
+          isActive:
+            typeof vehicle.isActive === "string"
+              ? vehicle.isActive === "true"
+              : Boolean(vehicle.isActive),
+        }));
+
         // Set the vehicles in the store
         set({
-          vehicles: result.data,
+          vehicles: vehicles,
           isLoading: false,
         });
       } else {

@@ -1,8 +1,12 @@
+// src/lib/db.ts (partial update)
 import { createPool } from "@vercel/postgres";
 
 // Create a connection pool to Vercel Postgres with connection string
 export const db = createPool({
   connectionString: process.env.POSTGRES_URL,
+  max: 10, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
+  connectionTimeoutMillis: 2000, // How long to wait for a connection from the pool
 });
 
 // Define the vehicle data structure

@@ -1,3 +1,4 @@
+// src/app/api/db-setup/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -14,14 +15,14 @@ export async function GET() {
           vehicle_id TEXT UNIQUE NOT NULL,
           trip_id TEXT NOT NULL,
           route_id TEXT NOT NULL,
-          latitude TEXT NOT NULL,
-          longitude TEXT NOT NULL,
-          timestamp TEXT NOT NULL,
+          latitude NUMERIC(10, 7) NOT NULL,  -- Changed to numeric for better precision
+          longitude NUMERIC(10, 7) NOT NULL,  -- Changed to numeric for better precision
+          timestamp TIMESTAMPTZ NOT NULL,
           congestion TEXT,
           stop_id TEXT,
           status TEXT,
           is_active BOOLEAN DEFAULT true,
-          last_seen TEXT NOT NULL,
+          last_seen TIMESTAMPTZ NOT NULL,
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
         )
@@ -31,6 +32,12 @@ export async function GET() {
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_vehicle_positions_vehicle_id 
         ON vehicle_positions(vehicle_id)
+      `);
+
+      // Create index on route_id for faster filtering
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_vehicle_positions_route_id 
+        ON vehicle_positions(route_id)
       `);
 
       return NextResponse.json({
