@@ -5,8 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBusSimple } from "@fortawesome/free-solid-svg-icons";
 import { divIcon } from "leaflet";
 import { renderToString } from "react-dom/server";
-import { useRef, useEffect } from "react";
-import L from "leaflet";
 
 interface MapProps {
   center?: [number, number];
@@ -20,32 +18,11 @@ export default function Map({
   selectedRoute = "all",
 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);
-  const mapRef = useRef<L.Map | null>(null);
 
   const filteredVehicles =
     selectedRoute === "all"
       ? vehicles
       : vehicles.filter((vehicle) => vehicle.routeId === selectedRoute);
-
-  useEffect(() => {
-    if (mapRef.current && filteredVehicles.length > 0) {
-      const validVehicles = filteredVehicles.filter(
-        (vehicle) =>
-          !isNaN(parseFloat(vehicle.latitude)) &&
-          !isNaN(parseFloat(vehicle.longitude))
-      );
-
-      if (validVehicles.length > 0) {
-        const bounds = L.latLngBounds(
-          validVehicles.map((vehicle) => [
-            parseFloat(vehicle.latitude),
-            parseFloat(vehicle.longitude),
-          ])
-        );
-        mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      }
-    }
-  }, [filteredVehicles]);
 
   const getBusIcon = (isActive: boolean) => {
     const iconHtml = renderToString(
@@ -69,9 +46,6 @@ export default function Map({
   return (
     <div className="flex-1 h-full">
       <MapContainer
-        ref={(map) => {
-          if (map) mapRef.current = map;
-        }}
         center={center}
         zoom={zoom}
         style={{ height: "100%", width: "100%" }}
