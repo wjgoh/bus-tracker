@@ -24,11 +24,15 @@ export default function Map({
       ? vehicles
       : vehicles.filter((vehicle) => vehicle.routeId === selectedRoute);
 
-  const getBusIcon = () => {
+  const getBusIcon = (isActive: boolean) => {
     const iconHtml = renderToString(
       <FontAwesomeIcon
         icon={faBusSimple}
-        style={{ color: "#0066cc", fontSize: "24px" }}
+        style={{
+          color: isActive ? "#0066cc" : "#000000",
+          fontSize: "24px",
+          opacity: isActive ? 1 : 0.8,
+        }}
       />
     );
     return divIcon({
@@ -61,7 +65,7 @@ export default function Map({
                 ? parseFloat(vehicle.longitude)
                 : 0,
             ]}
-            icon={getBusIcon()}
+            icon={getBusIcon(vehicle.isActive)}
           >
             <Popup>
               <div>
@@ -71,6 +75,23 @@ export default function Map({
                 <p>
                   Last Updated: {new Date(vehicle.timestamp).toLocaleString()}
                 </p>
+                <p>
+                  Status:{" "}
+                  <span
+                    className={
+                      vehicle.isActive
+                        ? "text-green-600 font-bold"
+                        : "text-gray-500"
+                    }
+                  >
+                    {vehicle.isActive ? "Active" : "Inactive"}
+                  </span>
+                </p>
+                {!vehicle.isActive && (
+                  <p className="text-sm text-gray-500">
+                    Last seen: {new Date(vehicle.lastSeen).toLocaleString()}
+                  </p>
+                )}
               </div>
             </Popup>
           </Marker>

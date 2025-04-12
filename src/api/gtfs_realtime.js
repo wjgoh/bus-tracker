@@ -32,6 +32,11 @@ export function VehicleDataFetcher() {
 
       const vehiclePositions = result.data;
 
+      // Get the list of active vehicle IDs from the current API response
+      const activeVehicleIds = vehiclePositions.map(
+        (vehicle) => vehicle.vehicleId
+      );
+
       // Update the Zustand store with new vehicle positions
       updateVehicles(vehiclePositions);
 
