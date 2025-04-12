@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { getAllVehicleData, getActiveVehicleIds } from "@/lib/db";
 
 export type VehiclePosition = {
   tripId: string;
@@ -24,7 +23,7 @@ type VehicleStore = {
   loadVehiclesFromDatabase: () => Promise<void>;
 };
 
-export const useVehicleStore = create<VehicleStore>((set, get) => ({
+export const useVehicleStore = create<VehicleStore>((set) => ({
   vehicles: [],
   isLoading: false,
   setVehicles: (vehicles) => {
