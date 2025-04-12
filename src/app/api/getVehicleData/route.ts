@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getAllVehicleData } from "@/lib/db";
 
-export async function GET(_request: Request) {
+export async function GET() {
   try {
     // Get all vehicle data from the database
     const result = await getAllVehicleData();
