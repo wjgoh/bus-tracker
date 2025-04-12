@@ -2,11 +2,25 @@
 
 import { Button } from "@/components/ui/button";
 import { useVehicleStore } from "@/store/vehicleStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function TrackButton() {
   const [isLoading, setIsLoading] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const loadVehiclesFromDatabase = useVehicleStore(
+    (state) => state.loadVehiclesFromDatabase
+  );
+
+  // Load vehicles from database on initial render
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      await loadVehiclesFromDatabase();
+      setIsLoading(false);
+    };
+
+    loadInitialData();
+  }, [loadVehiclesFromDatabase]);
 
   // Count active and inactive vehicles
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
@@ -15,23 +29,11 @@ export default function TrackButton() {
   const handleUpdateClick = async () => {
     setIsLoading(true);
     try {
-      console.log("Manually fetching vehicle data...");
-      const response = await fetch("/api/gtfs");
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        // Get the vehicle store update function
-        const updateVehicles = useVehicleStore.getState().updateVehicles;
-        updateVehicles(result.data);
-        console.log(`Updated ${result.data.length} vehicles`);
-      }
+      console.log("Manually fetching vehicle data from database...");
+      await loadVehiclesFromDatabase();
+      console.log(`Updated vehicles from database`);
     } catch (error) {
-      console.error("Error updating bus locations:", error);
+      console.error("Error updating bus locations from database:", error);
     } finally {
       setIsLoading(false);
     }

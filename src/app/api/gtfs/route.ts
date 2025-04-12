@@ -1,13 +1,13 @@
 import GtfsRealtimeBindings from "gtfs-realtime-bindings";
 import { NextResponse } from "next/server";
 
-// Configuration
-const URL =
+// Configuration - rename this to avoid conflict with global URL constructor
+const API_URL =
   "https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const response = await fetch(URL);
+    const response = await fetch(API_URL); // Use the renamed constant here
 
     if (!response.ok) {
       throw new Error(
@@ -46,7 +46,36 @@ export async function GET() {
         congestion: entity.vehicle.congestionLevel || "N/A",
         stopId: entity.vehicle.stopId || "N/A",
         status: entity.vehicle.currentStatus || "N/A",
+        isActive: true,
+        lastSeen: new Date().toISOString(),
       }));
+
+    // Save the vehicle data to the database
+    try {
+      // Get the base URL from the request
+      const baseUrl = new URL(request.url).origin;
+
+      // Use the fetch API to call our saveVehicleData endpoint
+      const saveUrl = `${baseUrl}/api/saveVehicleData`;
+
+      const saveResponse = await fetch(saveUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(vehiclePositions),
+      });
+
+      if (!saveResponse.ok) {
+        console.warn(
+          "Failed to save vehicle data to database:",
+          await saveResponse.text()
+        );
+      }
+    } catch (saveError) {
+      console.error("Error saving to database:", saveError);
+      // Continue with the response even if saving fails
+    }
 
     return NextResponse.json({ success: true, data: vehiclePositions });
   } catch (error) {
