@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type VehiclePosition = {
+export type VehiclePosition = {
   tripId: string;
   routeId: string;
   vehicleId: string;
@@ -16,13 +16,16 @@ type VehiclePosition = {
 
 type VehicleStore = {
   vehicles: VehiclePosition[];
+  isLoading: boolean;
   setVehicles: (vehicles: VehiclePosition[]) => void;
   updateVehicles: (vehicles: VehiclePosition[]) => void;
   markInactiveVehicles: (activeVehicleIds: string[]) => void;
+  loadVehiclesFromDatabase: () => Promise<void>;
 };
 
 export const useVehicleStore = create<VehicleStore>((set) => ({
   vehicles: [],
+  isLoading: false,
   setVehicles: (vehicles) => {
     // When setting vehicles for the first time, mark them all as active
     const enhancedVehicles = vehicles.map((vehicle) => ({
@@ -73,4 +76,36 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
 
       return { vehicles: updatedVehicles };
     }),
+  loadVehiclesFromDatabase: async () => {
+    set({ isLoading: true });
+    try {
+      // Fetch all vehicle data from the database using the API
+      const response = await fetch("/api/getVehicleData");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Process the data to ensure proper types
+        const vehicles = result.data.map((vehicle: VehiclePosition) => ({
+          ...vehicle,
+          // Convert string 'true'/'false' to boolean if necessary
+          isActive:
+            typeof vehicle.isActive === "string"
+              ? vehicle.isActive === "true"
+              : Boolean(vehicle.isActive),
+        }));
+
+        // Set the vehicles in the store
+        set({
+          vehicles: vehicles,
+          isLoading: false,
+        });
+      } else {
+        console.error("Failed to load vehicles from database:", result.error);
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error("Error loading vehicles from database:", error);
+      set({ isLoading: false });
+    }
+  },
 }));
