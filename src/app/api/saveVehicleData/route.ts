@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
-    const vehiclePositions = await request.json();
+    const { vehicles: vehiclePositions, activeVehicleIds } =
+      await request.json();
 
     // Begin a transaction
     const client = await db.connect();
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
 
       await client.query("BEGIN");
 
+      // First, update all vehicles from the current API response
       for (const vehicle of vehiclePositions) {
         const {
           tripId,
@@ -94,6 +96,22 @@ export async function POST(request: Request) {
             Boolean(isActive),
             formattedLastSeen,
           ]
+        );
+      }
+
+      // Then, mark vehicles as inactive if they're not in the current API response
+      if (activeVehicleIds && activeVehicleIds.length > 0) {
+        // Update all vehicles not in the activeVehicleIds list to inactive
+        await client.query(
+          `
+          UPDATE vehicle_positions
+          SET is_active = false, updated_at = NOW()
+          WHERE vehicle_id NOT IN (${activeVehicleIds
+            .map((_: string, i: number) => `$${i + 1}`)
+            .join(",")})
+          AND is_active = true
+          `,
+          activeVehicleIds
         );
       }
 
