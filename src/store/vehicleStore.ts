@@ -1,6 +1,7 @@
 import { create } from "zustand";
+import { getAllVehicleData, getActiveVehicleIds } from "@/lib/db";
 
-type VehiclePosition = {
+export type VehiclePosition = {
   tripId: string;
   routeId: string;
   vehicleId: string;
@@ -16,13 +17,16 @@ type VehiclePosition = {
 
 type VehicleStore = {
   vehicles: VehiclePosition[];
+  isLoading: boolean;
   setVehicles: (vehicles: VehiclePosition[]) => void;
   updateVehicles: (vehicles: VehiclePosition[]) => void;
   markInactiveVehicles: (activeVehicleIds: string[]) => void;
+  loadVehiclesFromDatabase: () => Promise<void>;
 };
 
-export const useVehicleStore = create<VehicleStore>((set) => ({
+export const useVehicleStore = create<VehicleStore>((set, get) => ({
   vehicles: [],
+  isLoading: false,
   setVehicles: (vehicles) => {
     // When setting vehicles for the first time, mark them all as active
     const enhancedVehicles = vehicles.map((vehicle) => ({
@@ -73,4 +77,25 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
 
       return { vehicles: updatedVehicles };
     }),
+  loadVehiclesFromDatabase: async () => {
+    set({ isLoading: true });
+    try {
+      // Fetch all vehicle data from the database
+      const result = await getAllVehicleData();
+
+      if (result.success && result.data) {
+        // Set the vehicles in the store
+        set({
+          vehicles: result.data,
+          isLoading: false,
+        });
+      } else {
+        console.error("Failed to load vehicles from database:", result.error);
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error("Error loading vehicles from database:", error);
+      set({ isLoading: false });
+    }
+  },
 }));

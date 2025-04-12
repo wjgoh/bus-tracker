@@ -46,7 +46,34 @@ export async function GET() {
         congestion: entity.vehicle.congestionLevel || "N/A",
         stopId: entity.vehicle.stopId || "N/A",
         status: entity.vehicle.currentStatus || "N/A",
+        isActive: true,
+        lastSeen: new Date().toISOString(),
       }));
+
+    // Save the vehicle data to the database
+    try {
+      // Use the fetch API to call our saveVehicleData endpoint
+      const saveResponse = await fetch(
+        new URL("/api/saveVehicleData", request.url),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(vehiclePositions),
+        }
+      );
+
+      if (!saveResponse.ok) {
+        console.warn(
+          "Failed to save vehicle data to database:",
+          await saveResponse.text()
+        );
+      }
+    } catch (saveError) {
+      console.error("Error saving to database:", saveError);
+      // Continue with the response even if saving fails
+    }
 
     return NextResponse.json({ success: true, data: vehiclePositions });
   } catch (error) {

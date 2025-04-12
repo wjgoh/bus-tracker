@@ -2,11 +2,25 @@
 
 import { Button } from "@/components/ui/button";
 import { useVehicleStore } from "@/store/vehicleStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function TrackButton() {
   const [isLoading, setIsLoading] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const loadVehiclesFromDatabase = useVehicleStore(
+    (state) => state.loadVehiclesFromDatabase
+  );
+
+  // Load vehicles from database on initial render
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      await loadVehiclesFromDatabase();
+      setIsLoading(false);
+    };
+
+    loadInitialData();
+  }, [loadVehiclesFromDatabase]);
 
   // Count active and inactive vehicles
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
