@@ -41,8 +41,7 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
       // Update or add new vehicles
       vehicles.forEach((vehicle) => {
         const now = new Date().toISOString();
-        const existingVehicle = existingVehicles.get(vehicle.vehicleId);
-
+        // Removed unused existingVehicle declaration
         existingVehicles.set(vehicle.vehicleId, {
           ...vehicle,
           isActive: true,
