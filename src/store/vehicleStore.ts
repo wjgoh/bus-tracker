@@ -85,7 +85,7 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
 
       if (result.success && result.data) {
         // Process the data to ensure proper types
-        const vehicles = result.data.map((vehicle: any) => ({
+        const vehicles = result.data.map((vehicle: VehiclePosition) => ({
           ...vehicle,
           // Convert string 'true'/'false' to boolean if necessary
           isActive:
