@@ -5,23 +5,27 @@ import { NextResponse } from "next/server";
 const API_URL =
   "https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder";
 
-let cachedVehiclePositions:
-  | {
-      tripId: string;
-      routeId: string;
-      vehicleId: string;
-      latitude: string;
-      longitude: string;
-      timestamp: string;
-      congestion: string;
-      stopId: string;
-      status:
-        | string
-        | GtfsRealtimeBindings.transit_realtime.VehiclePosition.VehicleStopStatus;
-      isActive: boolean;
-      lastSeen: string;
-    }[]
-  | null = null;
+// Define the type separately for better readability
+type VehiclePosition = {
+  tripId: string;
+  routeId: string;
+  vehicleId: string;
+  latitude: string;
+  longitude: string;
+  timestamp: string;
+  congestion:
+    | string
+    | GtfsRealtimeBindings.transit_realtime.VehiclePosition.CongestionLevel;
+  stopId: string;
+  status:
+    | string
+    | GtfsRealtimeBindings.transit_realtime.VehiclePosition.VehicleStopStatus;
+  isActive: boolean;
+  lastSeen: string;
+};
+
+// Use let since we're reassigning these values
+let cachedVehiclePositions: VehiclePosition[] | null = null;
 let cacheTimestamp: number | null = null;
 const CACHE_TTL_MS = 15000;
 
@@ -117,7 +121,10 @@ export async function GET(request: Request) {
       // Continue with the response even if saving fails
     }
 
+    // Make sure to update cachedVehiclePositions here
+    cachedVehiclePositions = vehiclePositions;
     cacheTimestamp = now;
+
     return NextResponse.json({ success: true, data: vehiclePositions });
   } catch (error) {
     console.error("Error fetching GTFS data:", error);
