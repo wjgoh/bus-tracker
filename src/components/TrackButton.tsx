@@ -11,16 +11,9 @@ export default function TrackButton() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Load vehicles from database on initial render
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      await loadVehiclesFromDatabase();
-      setIsLoading(false);
-    };
-
-    loadInitialData();
-  }, [loadVehiclesFromDatabase]);
+  // We don't need to load vehicles on initial render here
+  // as it's already being done in MapWrapper and VehicleDataFetcher
+  // This prevents duplicate data loading and potential memory issues
 
   // Count active and inactive vehicles
   const activeVehicles = vehicles.filter((v) => v.isActive).length;

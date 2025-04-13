@@ -1,10 +1,28 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import RouteSelector from "@/components/ui/RouteSelector";
+import { useVehicleStore } from "@/store/vehicleStore";
 
 export default function MapWrapper() {
   const [selectedRoute, setSelectedRoute] = useState<string>("all");
+  const loadVehiclesFromDatabase = useVehicleStore(
+    (state) => state.loadVehiclesFromDatabase
+  );
+
+  // Set up automatic refresh every 30 seconds
+  useEffect(() => {
+    // Initial load
+    loadVehiclesFromDatabase();
+
+    // Set up interval for automatic refresh
+    const intervalId = setInterval(() => {
+      loadVehiclesFromDatabase();
+    }, 30000); // 30 seconds
+
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [loadVehiclesFromDatabase]);
 
   const Map = dynamic(() => import("@/components/Map"), {
     ssr: false,
