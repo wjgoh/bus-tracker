@@ -25,7 +25,7 @@ export default function MapWrapper() {
     }
 
     fetchVehicleData(); // initial load
-    intervalId = setInterval(fetchVehicleData, 30000);
+    intervalId = setInterval(fetchVehicleData, 5000);
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
