@@ -5,8 +5,24 @@ import { NextResponse } from "next/server";
 const API_URL =
   "https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder";
 
+let cachedVehiclePositions: any[] | null = null;
+let cacheTimestamp: number | null = null;
+const CACHE_TTL_MS = 15000;
+
 export async function GET(request: Request) {
   try {
+    const now = Date.now();
+    if (
+      cachedVehiclePositions &&
+      cacheTimestamp &&
+      now - cacheTimestamp < CACHE_TTL_MS
+    ) {
+      return NextResponse.json({
+        success: true,
+        data: cachedVehiclePositions,
+        cache: true,
+      });
+    }
     const response = await fetch(API_URL); // Use the renamed constant here
 
     if (!response.ok) {
@@ -84,7 +100,8 @@ export async function GET(request: Request) {
       console.error("Error saving to database:", saveError);
       // Continue with the response even if saving fails
     }
-
+    cachedVehiclePositions = vehiclePositions;
+    cacheTimestamp = now;
     return NextResponse.json({ success: true, data: vehiclePositions });
   } catch (error) {
     console.error("Error fetching GTFS data:", error);
