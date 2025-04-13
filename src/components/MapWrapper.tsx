@@ -14,26 +14,35 @@ export default function MapWrapper() {
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
     async function fetchAndSyncVehicleData() {
-      // 1. Fetch new vehicle data (GET /api/gtfs)
+      // 1. First load existing vehicle data for immediate display
+      await loadVehiclesFromDatabase();
+
+      // 2. Fetch fresh GTFS data in background
       const gtfsRes = await fetch("/api/gtfs");
       const gtfsJson = await gtfsRes.json();
       if (!gtfsJson.success) return;
       const vehiclePositions = gtfsJson.data;
-      // 2. Save to database (POST /api/saveVehicleData)
+
+      // 3. Save updated data to database
       await fetch("/api/saveVehicleData", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vehicles: vehiclePositions }),
       });
-      // 2.5. Fetch updated stops (GET /api/stops)
-      await fetch("/api/stops");
-      // 3. Reload vehicles into state (GET /api/getVehicleData)
+
+      // 4. Only fetch stops data when a specific route is selected
+      if (selectedRoute !== "all") {
+        await fetch("/api/stops");
+      }
+
+      // 5. Reload vehicles to reflect latest changes
       await loadVehiclesFromDatabase();
     }
+
     fetchAndSyncVehicleData(); // initial load
     intervalId = setInterval(fetchAndSyncVehicleData, 30000);
     return () => clearInterval(intervalId);
-  }, [loadVehiclesFromDatabase]);
+  }, [loadVehiclesFromDatabase, selectedRoute]);
 
   const Map = dynamic(() => import("@/components/Map"), {
     ssr: false,

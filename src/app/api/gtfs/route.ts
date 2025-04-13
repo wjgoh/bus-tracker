@@ -15,7 +15,9 @@ let cachedVehiclePositions:
       timestamp: string;
       congestion: string;
       stopId: string;
-      status: string;
+      status:
+        | string
+        | GtfsRealtimeBindings.transit_realtime.VehiclePosition.VehicleStopStatus;
       isActive: boolean;
       lastSeen: string;
     }[]
@@ -75,7 +77,7 @@ export async function GET(request: Request) {
           : "N/A",
         congestion: entity.vehicle.congestionLevel || "N/A",
         stopId: entity.vehicle.stopId || "N/A",
-        status: entity.vehicle.currentStatus || "N/A",
+        status: String(entity.vehicle.currentStatus || "N/A"),
         isActive: true,
         lastSeen: new Date().toISOString(),
       }));
@@ -114,7 +116,7 @@ export async function GET(request: Request) {
       console.error("Error saving to database:", saveError);
       // Continue with the response even if saving fails
     }
-    cachedVehiclePositions = vehiclePositions;
+
     cacheTimestamp = now;
     return NextResponse.json({ success: true, data: vehiclePositions });
   } catch (error) {
