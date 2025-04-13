@@ -5,7 +5,21 @@ import { NextResponse } from "next/server";
 const API_URL =
   "https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder";
 
-let cachedVehiclePositions: any[] | null = null;
+let cachedVehiclePositions:
+  | {
+      tripId: string;
+      routeId: string;
+      vehicleId: string;
+      latitude: string;
+      longitude: string;
+      timestamp: string;
+      congestion: string;
+      stopId: string;
+      status: string;
+      isActive: boolean;
+      lastSeen: string;
+    }[]
+  | null = null;
 let cacheTimestamp: number | null = null;
 const CACHE_TTL_MS = 15000;
 

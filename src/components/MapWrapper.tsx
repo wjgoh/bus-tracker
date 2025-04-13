@@ -12,7 +12,7 @@ export default function MapWrapper() {
 
   // Set up automatic refresh every 30 seconds
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: NodeJS.Timeout | null = null;
     async function fetchAndSyncVehicleData() {
       // 1. Fetch new vehicle data (GET /api/gtfs)
       const gtfsRes = await fetch("/api/gtfs");
