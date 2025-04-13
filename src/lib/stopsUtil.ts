@@ -37,7 +37,8 @@ export function parseStops(stopsData: string): Stop[] {
  * Filter stops by route ID (placeholder for future implementation)
  * In a real application, this would use a mapping between routes and stops
  */
-export function getStopsByRoute(stops: Stop[], routeId: string): Stop[] {
+export function getStopsByRoute(stops: Stop[], _routeId: string): Stop[] {
+  // Prefix routeId with an underscore
   // For now, return all stops since we don't have route-to-stop mapping
   // In a real implementation, this would filter stops based on the route
   return stops;
