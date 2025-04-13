@@ -10,38 +10,25 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Set up automatic refresh every 30 seconds
+  // Set up refresh from database only
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
-    async function fetchAndSyncVehicleData() {
-      // 1. First load existing vehicle data for immediate display
+
+    async function fetchVehicleData() {
+      // Only load from database - no more GTFS API calls
       await loadVehiclesFromDatabase();
 
-      // 2. Fetch fresh GTFS data in background
-      const gtfsRes = await fetch("/api/gtfs");
-      const gtfsJson = await gtfsRes.json();
-      if (!gtfsJson.success) return;
-      const vehiclePositions = gtfsJson.data;
-
-      // 3. Save updated data to database
-      await fetch("/api/saveVehicleData", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicles: vehiclePositions }),
-      });
-
-      // 4. Only fetch stops data when a specific route is selected
+      // Only fetch stops data when a specific route is selected
       if (selectedRoute !== "all") {
         await fetch("/api/stops");
       }
-
-      // 5. Reload vehicles to reflect latest changes
-      await loadVehiclesFromDatabase();
     }
 
-    fetchAndSyncVehicleData(); // initial load
-    intervalId = setInterval(fetchAndSyncVehicleData, 30000);
-    return () => clearInterval(intervalId);
+    fetchVehicleData(); // initial load
+    intervalId = setInterval(fetchVehicleData, 30000);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [loadVehiclesFromDatabase, selectedRoute]);
 
   const Map = dynamic(() => import("@/components/Map"), {
