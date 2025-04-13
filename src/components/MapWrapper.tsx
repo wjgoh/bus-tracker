@@ -1,10 +1,35 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import RouteSelector from "@/components/ui/RouteSelector";
+import { useVehicleStore } from "@/store/vehicleStore";
 
 export default function MapWrapper() {
   const [selectedRoute, setSelectedRoute] = useState<string>("all");
+  const loadVehiclesFromDatabase = useVehicleStore(
+    (state) => state.loadVehiclesFromDatabase
+  );
+
+  // Set up refresh from database only
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    async function fetchVehicleData() {
+      // Only load from database - no more GTFS API calls
+      await loadVehiclesFromDatabase();
+
+      // Only fetch stops data when a specific route is selected
+      if (selectedRoute !== "all") {
+        await fetch("/api/stops");
+      }
+    }
+
+    fetchVehicleData(); // initial load
+    intervalId = setInterval(fetchVehicleData, 5000);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [loadVehiclesFromDatabase, selectedRoute]);
 
   const Map = dynamic(() => import("@/components/Map"), {
     ssr: false,
