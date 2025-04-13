@@ -18,7 +18,7 @@ export default function MapWrapper() {
     // Set up interval for automatic refresh
     const intervalId = setInterval(() => {
       loadVehiclesFromDatabase();
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds
 
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
