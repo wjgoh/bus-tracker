@@ -44,7 +44,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const stopsToShow =
     selectedRoute === "all"
       ? stops
-      : stops.filter((_stop) => {
+      : stops.filter(() => {
           // Implement your route filtering logic here
           // This is a placeholder - you'll need to replace with actual logic
           // that connects stops to routes
