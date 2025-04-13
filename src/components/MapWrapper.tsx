@@ -12,15 +12,26 @@ export default function MapWrapper() {
 
   // Set up automatic refresh every 30 seconds
   useEffect(() => {
-    // Initial load
-    loadVehiclesFromDatabase();
-
-    // Set up interval for automatic refresh
-    const intervalId = setInterval(() => {
-      loadVehiclesFromDatabase();
-    }, 10000); // 10 seconds
-
-    // Clean up interval on component unmount
+    let intervalId: NodeJS.Timeout;
+    async function fetchAndSyncVehicleData() {
+      // 1. Fetch new vehicle data (GET /api/gtfs)
+      const gtfsRes = await fetch("/api/gtfs");
+      const gtfsJson = await gtfsRes.json();
+      if (!gtfsJson.success) return;
+      const vehiclePositions = gtfsJson.data;
+      // 2. Save to database (POST /api/saveVehicleData)
+      await fetch("/api/saveVehicleData", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicles: vehiclePositions }),
+      });
+      // 2.5. Fetch updated stops (GET /api/stops)
+      await fetch("/api/stops");
+      // 3. Reload vehicles into state (GET /api/getVehicleData)
+      await loadVehiclesFromDatabase();
+    }
+    fetchAndSyncVehicleData(); // initial load
+    intervalId = setInterval(fetchAndSyncVehicleData, 30000);
     return () => clearInterval(intervalId);
   }, [loadVehiclesFromDatabase]);
 

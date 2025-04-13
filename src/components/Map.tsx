@@ -122,6 +122,7 @@ export default function Map({
 
   // Load stops.txt data
   useEffect(() => {
+    if (selectedRoute === "all") return;
     fetch("/api/stops")
       .then((response) => response.text())
       .then((data) => {
@@ -130,7 +131,7 @@ export default function Map({
       .catch((error) => {
         console.error("Error loading stops data:", error);
       });
-  }, []);
+  }, [selectedRoute]);
 
   const filteredVehicles =
     selectedRoute === "all"
@@ -170,7 +171,7 @@ export default function Map({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {/* Display bus stops */}
-        {stopsData && (
+        {selectedRoute !== "all" && stopsData && (
           <BusStops selectedRoute={selectedRoute} stopsData={stopsData} />
         )}
 

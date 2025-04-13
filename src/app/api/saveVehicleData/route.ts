@@ -44,7 +44,11 @@ export async function POST(request: Request) {
 
       await client.query("BEGIN");
 
-      // First, update all vehicles from the current API response
+      // Prepare batch values for all vehicles
+      const values = [];
+      const valueStrings = [];
+      let valueIndex = 1;
+
       for (const vehicle of vehiclePositions) {
         const {
           tripId,
@@ -60,43 +64,52 @@ export async function POST(request: Request) {
           lastSeen,
         } = vehicle;
 
-        // Convert string timestamps to proper format if needed
         const formattedTimestamp = new Date(timestamp).toISOString();
         const formattedLastSeen = new Date(lastSeen).toISOString();
 
-        // Using parameterized query for security
-        await client.query(
-          `
-          INSERT INTO vehicle_positions 
-           (trip_id, route_id, vehicle_id, latitude, longitude, timestamp, congestion, stop_id, status, is_active, last_seen, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-           ON CONFLICT (vehicle_id) DO UPDATE SET
-           trip_id = $1, 
-           route_id = $2, 
-           latitude = $4, 
-           longitude = $5, 
-           timestamp = $6, 
-           congestion = $7, 
-           stop_id = $8, 
-           status = $9, 
-           is_active = $10, 
-           last_seen = $11,
-           updated_at = NOW()
-        `,
-          [
-            tripId,
-            routeId,
-            vehicleId,
-            parseFloat(latitude) || 0, // Convert to numeric and handle invalid values
-            parseFloat(longitude) || 0, // Convert to numeric and handle invalid values
-            formattedTimestamp,
-            congestion,
-            stopId,
-            status,
-            Boolean(isActive),
-            formattedLastSeen,
-          ]
+        values.push(
+          tripId,
+          routeId,
+          vehicleId,
+          parseFloat(latitude) || 0,
+          parseFloat(longitude) || 0,
+          formattedTimestamp,
+          congestion,
+          stopId,
+          status,
+          Boolean(isActive),
+          formattedLastSeen
         );
+
+        const placeholders = Array.from(
+          { length: 11 },
+          (_, i) => `$${valueIndex + i}`
+        ).join(", ");
+        valueStrings.push(`(${placeholders})`);
+        valueIndex += 11;
+      }
+
+      // Execute batch upsert
+      if (values.length > 0) {
+        const query = `
+          INSERT INTO vehicle_positions 
+          (trip_id, route_id, vehicle_id, latitude, longitude, timestamp, 
+           congestion, stop_id, status, is_active, last_seen)
+          VALUES ${valueStrings.join(", ")}
+          ON CONFLICT (vehicle_id) DO UPDATE SET
+            trip_id = EXCLUDED.trip_id,
+            route_id = EXCLUDED.route_id,
+            latitude = EXCLUDED.latitude,
+            longitude = EXCLUDED.longitude,
+            timestamp = EXCLUDED.timestamp,
+            congestion = EXCLUDED.congestion,
+            stop_id = EXCLUDED.stop_id,
+            status = EXCLUDED.status,
+            is_active = EXCLUDED.is_active,
+            last_seen = EXCLUDED.last_seen,
+            updated_at = NOW()
+        `;
+        await client.query(query, values);
       }
 
       // Then, mark vehicles as inactive if they're not in the current API response
