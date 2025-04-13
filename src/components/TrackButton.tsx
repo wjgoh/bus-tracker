@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useVehicleStore } from "@/store/vehicleStore";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export default function TrackButton() {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,42 +19,40 @@ export default function TrackButton() {
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
   const inactiveVehicles = vehicles.filter((v) => !v.isActive).length;
 
-  const handleUpdateClick = async () => {
-    setIsLoading(true);
-    try {
-      console.log("Manually fetching vehicle data...");
-      const response = await fetch("/api/gtfs");
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        // Get the vehicle store update function
-        const updateVehicles = useVehicleStore.getState().updateVehicles;
-        updateVehicles(result.data);
-
-        // After updating the UI, reload from database to ensure we have the latest data
-        // including any vehicles that were marked inactive in the database
-        await loadVehiclesFromDatabase();
-
-        console.log(`Updated ${result.data.length} vehicles`);
-      }
-    } catch (error) {
-      console.error("Error updating bus locations:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-2">
       <Button
         variant="default"
         className="mb-2 ml-0"
-        onClick={handleUpdateClick}
+        onClick={async () => {
+          setIsLoading(true);
+          try {
+            console.log("Manually fetching vehicle data...");
+            const response = await fetch("/api/gtfs");
+
+            if (!response.ok) {
+              throw new Error(`API request failed: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.data) {
+              // Get the vehicle store update function
+              const updateVehicles = useVehicleStore.getState().updateVehicles;
+              updateVehicles(result.data);
+
+              // After updating the UI, reload from database to ensure we have the latest data
+              // including any vehicles that were marked inactive in the database
+              await loadVehiclesFromDatabase();
+
+              console.log(`Updated ${result.data.length} vehicles`);
+            }
+          } catch (error) {
+            console.error("Error updating bus locations:", error);
+          } finally {
+            setIsLoading(false);
+          }
+        }}
         disabled={isLoading}
       >
         {isLoading ? "Updating..." : "Update Bus Location"}

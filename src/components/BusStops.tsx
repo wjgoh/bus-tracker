@@ -24,7 +24,8 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
     const stopLines = stopsData
       .split("\n")
       .filter((line) => line.trim().length > 0);
-    const header = stopLines[0].split(",");
+
+    // Skip header row and parse the data
     const parsedStops = stopLines.slice(1).map((line) => {
       const values = line.split(",");
       return {
@@ -39,10 +40,16 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
     setStops(parsedStops);
   }, [stopsData]);
 
-  // Determine if we should show all stops or filter by route
-  // For now, we'll show all stops since we don't have route-to-stop mapping
-  // In a real app, you would filter stops based on the selected route
-  const stopsToShow = stops;
+  // Filter stops by route if a specific route is selected
+  const stopsToShow =
+    selectedRoute === "all"
+      ? stops
+      : stops.filter((stop) => {
+          // Implement your route filtering logic here
+          // This is a placeholder - you'll need to replace with actual logic
+          // that connects stops to routes
+          return true; // For now, show all stops regardless of route
+        });
 
   return (
     <>

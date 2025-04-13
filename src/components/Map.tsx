@@ -9,7 +9,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import LocationButton from "./LocationButton";
 import { createPortal } from "react-dom";
 import BusStops from "./BusStops";
-import { parseStops } from "@/lib/stopsUtil";
 
 interface MapProps {
   center?: [number, number];
