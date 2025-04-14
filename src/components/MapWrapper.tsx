@@ -10,22 +10,22 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Set up refresh from database only
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
+    // Function to load data from database
     async function fetchVehicleData() {
-      // Only load from database - no more GTFS API calls
+      // Load from database for UI updates
       await loadVehiclesFromDatabase();
-
-      // Only fetch stops data when a specific route is selected
-      if (selectedRoute !== "all") {
-        await fetch("/api/stops");
-      }
     }
 
-    fetchVehicleData(); // initial load
-    intervalId = setInterval(fetchVehicleData, 5000);
+    // Initial load
+    fetchVehicleData();
+
+    // Set up interval - just one timer now
+    intervalId = setInterval(fetchVehicleData, 5000); // Fast UI updates (5s)
+
+    // Clean up
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
