@@ -122,8 +122,6 @@ export async function getAllVehicleData() {
         is_active as "isActive", 
         last_seen as "lastSeen"
       FROM vehicle_positions
-      /* Remove the WHERE is_active = true clause to include inactive buses */
-      ORDER BY last_seen DESC, is_active DESC
     `);
 
     return { success: true, data: result.rows };
