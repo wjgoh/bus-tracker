@@ -11,7 +11,6 @@ import { createPortal } from "react-dom";
 import BusStops from "./BusStops";
 import RouteShape from "./RouteShape";
 import {
-  ShapePoint,
   RouteShape as RouteShapeType,
   parseShapes,
   parseTrips,

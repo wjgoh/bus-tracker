@@ -18,10 +18,6 @@ interface BusStopsProps {
 
 export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [stops, setStops] = useState<Stop[]>([]);
-  const [stopTimesData, setStopTimesData] = useState<string>("");
-  const [tripToStops, setTripToStops] = useState<
-    Map<string, Array<{ stopId: string; sequence: number }>>
-  >(new Map());
   const [relevantStopIds, setRelevantStopIds] = useState<Set<string>>(
     new Set()
   );
@@ -40,11 +36,9 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       })
       .then((data) => {
         console.log(`Received stop_times data: ${data.length} bytes`);
-        setStopTimesData(data);
 
-        // Parse the stop times data
+        // Parse the stop times data directly without storing in state
         const parsedTripToStops = parseStopTimes(data);
-        setTripToStops(parsedTripToStops);
 
         // Find relevant trip IDs for this route
         const routeVehicles = vehicles.filter(
