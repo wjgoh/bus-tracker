@@ -5,10 +5,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBusSimple } from "@fortawesome/free-solid-svg-icons";
 import { divIcon } from "leaflet";
 import { renderToString } from "react-dom/server";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import LocationButton from "./LocationButton";
 import { createPortal } from "react-dom";
 import BusStops from "./BusStops";
+import RouteShape from "./RouteShape";
+import {
+  ShapePoint,
+  RouteShape as RouteShapeType,
+  parseShapes,
+  parseTrips,
+  buildRouteShapes,
+} from "@/lib/routeUtil";
 
 interface MapProps {
   center?: [number, number];
@@ -119,6 +127,10 @@ export default function Map({
 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);
   const [stopsData, setStopsData] = useState<string>("");
+  const [shapesData, setShapesData] = useState<string>("");
+  const [tripsData, setTripsData] = useState<string>("");
+  const [routeShapes, setRouteShapes] = useState<RouteShapeType[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Load stops.txt data
   useEffect(() => {
@@ -133,10 +145,144 @@ export default function Map({
       });
   }, [selectedRoute]);
 
-  const filteredVehicles =
-    selectedRoute === "all"
+  // Load shapes.txt data for route lines
+  useEffect(() => {
+    if (selectedRoute === "all") {
+      setRouteShapes([]);
+      return;
+    }
+
+    // Fetch the shapes data if we don't already have it
+    if (!shapesData) {
+      console.log("Fetching shapes data...");
+      fetch("/api/shapes")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          return response.text();
+        })
+        .then((data) => {
+          console.log(`Received shapes data: ${data.length} bytes`);
+          setShapesData(data);
+        })
+        .catch((error) => {
+          console.error("Error loading shapes data:", error);
+          setFetchError(`Shapes error: ${error.message}`);
+        });
+    }
+  }, [selectedRoute, shapesData]);
+
+  // Load trips.txt data for route-shape relationships
+  useEffect(() => {
+    if (selectedRoute === "all") return;
+
+    // Fetch the trips data if we don't already have it
+    if (!tripsData) {
+      console.log("Fetching trips data...");
+      fetch("/api/trips")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+          }
+          return response.text();
+        })
+        .then((data) => {
+          console.log(`Received trips data: ${data.length} bytes`);
+          setTripsData(data);
+        })
+        .catch((error) => {
+          console.error("Error loading trips data:", error);
+          setFetchError(`Trips error: ${error.message}`);
+        });
+    }
+  }, [selectedRoute, tripsData]);
+
+  // Process route shapes when data is available and route is selected
+  useEffect(() => {
+    if (selectedRoute === "all" || !shapesData || !tripsData) {
+      setRouteShapes([]);
+      return;
+    }
+
+    console.log("Processing route shape data...");
+    console.log(`Selected route: ${selectedRoute}`);
+    console.log(`Shapes data size: ${shapesData.length} bytes`);
+    console.log(`Trips data size: ${tripsData.length} bytes`);
+
+    try {
+      // Check the first few lines of each file to confirm format
+      const shapesLines = shapesData.split("\n").slice(0, 3);
+      const tripsLines = tripsData.split("\n").slice(0, 3);
+
+      console.log("Shapes data first lines:", shapesLines);
+      console.log("Trips data first lines:", tripsLines);
+
+      const shapePoints = parseShapes(shapesData);
+      const tripToShapes = parseTrips(tripsData);
+
+      // Find vehicles with the selected route ID
+      const matchingVehicles = vehicles.filter(
+        (v) => v.routeId === selectedRoute
+      );
+
+      if (matchingVehicles.length === 0) {
+        console.warn(`No vehicles found for route ${selectedRoute}`);
+        setFetchError(`No vehicles found for route ${selectedRoute}`);
+        setRouteShapes([]);
+        return;
+      }
+
+      // Use the trip ID from the first matching vehicle
+      const selectedTripId = matchingVehicles[0].tripId;
+      console.log(`Using trip ID ${selectedTripId} for route ${selectedRoute}`);
+
+      // Check if the selected trip exists in our data
+      if (!tripToShapes.has(selectedTripId)) {
+        console.warn(`Trip ${selectedTripId} not found in trips data`);
+        setFetchError(`Trip ID ${selectedTripId} not found in trips data`);
+        setRouteShapes([]);
+        return;
+      }
+
+      const shapes = buildRouteShapes(
+        shapePoints,
+        tripToShapes,
+        selectedTripId
+      );
+      console.log(`Setting ${shapes.length} route shapes`);
+
+      // Check if shapes have valid data
+      if (shapes.length > 0) {
+        const totalPoints = shapes.reduce(
+          (sum, shape) => sum + shape.points.length,
+          0
+        );
+        console.log(`Total points across all shapes: ${totalPoints}`);
+
+        // Sample check of shape data
+        const sampleShape = shapes[0];
+        console.log(`Sample shape (${sampleShape.shape_id}) data:`, {
+          route_id: sampleShape.route_id,
+          points_count: sampleShape.points.length,
+          first_point: sampleShape.points[0],
+          last_point: sampleShape.points[sampleShape.points.length - 1],
+        });
+      }
+
+      setRouteShapes(shapes);
+    } catch (error) {
+      console.error("Error processing route data:", error);
+      setFetchError(`Processing error: ${(error as Error).message}`);
+      setRouteShapes([]);
+    }
+  }, [selectedRoute, shapesData, tripsData, vehicles]);
+
+  const filteredVehicles = useMemo(() => {
+    return selectedRoute === "all"
       ? vehicles
       : vehicles.filter((vehicle) => vehicle.routeId === selectedRoute);
+  }, [vehicles, selectedRoute]);
 
   const getBusIcon = (isActive: boolean) => {
     const iconHtml = renderToString(
@@ -170,6 +316,19 @@ export default function Map({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        {/* Display route shapes */}
+        {selectedRoute !== "all" && routeShapes.length > 0 && (
+          <RouteShape shapes={routeShapes} />
+        )}
+
+        {/* Display debug info */}
+        {fetchError && (
+          <div className="absolute top-0 right-0 bg-red-500 text-white p-2 z-1000">
+            {fetchError}
+          </div>
+        )}
+
         {/* Display bus stops */}
         {selectedRoute !== "all" && stopsData && (
           <BusStops selectedRoute={selectedRoute} stopsData={stopsData} />
