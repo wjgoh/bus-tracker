@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ClientLayout from "./ClientLayout";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <ClientLayout>{children}</ClientLayout>
+      <SpeedInsights />
     </html>
   );
 }
