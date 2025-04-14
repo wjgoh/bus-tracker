@@ -1,5 +1,7 @@
 import { CircleMarker, Popup } from "react-leaflet";
 import { useState, useEffect } from "react";
+import { parseStopTimes } from "@/lib/routeUtil";
+import { useVehicleStore } from "@/store/vehicleStore";
 
 interface Stop {
   stop_id: string;
@@ -16,7 +18,54 @@ interface BusStopsProps {
 
 export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [stops, setStops] = useState<Stop[]>([]);
+  const [relevantStopIds, setRelevantStopIds] = useState<Set<string>>(
+    new Set()
+  );
+  const vehicles = useVehicleStore((state) => state.vehicles);
 
+  // Fetch stop_times.txt data
+  useEffect(() => {
+    if (selectedRoute === "all") return;
+
+    fetch("/api/stop_times")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((data) => {
+        console.log(`Received stop_times data: ${data.length} bytes`);
+
+        // Parse the stop times data directly without storing in state
+        const parsedTripToStops = parseStopTimes(data);
+
+        // Find relevant trip IDs for this route
+        const routeVehicles = vehicles.filter(
+          (v) => v.routeId === selectedRoute
+        );
+        if (routeVehicles.length > 0) {
+          // Get all stop IDs for these trip IDs
+          const stopIdsForRoute = new Set<string>();
+          for (const vehicle of routeVehicles) {
+            const tripId = vehicle.tripId;
+            if (parsedTripToStops.has(tripId)) {
+              const stopSequences = parsedTripToStops.get(tripId)!;
+              stopSequences.forEach((item) => stopIdsForRoute.add(item.stopId));
+            }
+          }
+          console.log(
+            `Found ${stopIdsForRoute.size} stops for route ${selectedRoute}`
+          );
+          setRelevantStopIds(stopIdsForRoute);
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading stop_times data:", error);
+      });
+  }, [selectedRoute, vehicles]);
+
+  // Parse stops.txt data
   useEffect(() => {
     if (!stopsData) return;
 
@@ -44,13 +93,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const stopsToShow =
     selectedRoute === "all"
       ? stops
-      : stops.filter(() => {
-          // Implement your route filtering logic here
-          // This is a placeholder - you'll need to replace with actual logic
-          // that connects stops to routes
-          // For example: return _stop.route_id === selectedRoute; (if stops had route info)
-          return true; // For now, show all stops regardless of route
-        });
+      : stops.filter((stop) => relevantStopIds.has(stop.stop_id));
 
   return (
     <>
