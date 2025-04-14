@@ -1,7 +1,6 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVehicleStore } from "@/store/vehicleStore";
-import { useStopsStore } from "@/store/stopsStore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBusSimple } from "@fortawesome/free-solid-svg-icons";
 import { divIcon } from "leaflet";
@@ -126,21 +125,24 @@ export default function Map({
   selectedRoute = "all",
 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);
-
   const [stopsData, setStopsData] = useState<string>("");
   const [shapesData, setShapesData] = useState<string>("");
   const [tripsData, setTripsData] = useState<string>("");
   const [routeShapes, setRouteShapes] = useState<RouteShapeType[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-
-  // Fetch stops data only once and only when a specific route is selected
+  // Load stops.txt data
   useEffect(() => {
-    if (selectedRoute !== "all") {
-      fetchStopsData();
-    }
-  }, [selectedRoute, fetchStopsData]);
-
+    if (selectedRoute === "all") return;
+    fetch("/api/stops")
+      .then((response) => response.text())
+      .then((data) => {
+        setStopsData(data);
+      })
+      .catch((error) => {
+        console.error("Error loading stops data:", error);
+      });
+  }, [selectedRoute]);
 
   // Load shapes.txt data for route lines
   useEffect(() => {
@@ -274,7 +276,6 @@ export default function Map({
       setRouteShapes([]);
     }
   }, [selectedRoute, shapesData, tripsData, vehicles]);
-
 
   const filteredVehicles = useMemo(() => {
     return selectedRoute === "all"

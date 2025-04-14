@@ -5,20 +5,19 @@ import { useVehicleStore } from "@/store/vehicleStore";
 import { useState } from "react";
 
 export default function TrackButton() {
-  // Use the isLoading state directly from the store
-  const isLoading = useVehicleStore((state) => state.isLoading);
+  const [isLoading, setIsLoading] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
   const loadVehiclesFromDatabase = useVehicleStore(
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Count active and inactive vehicles directly from the store state
+  // We don't need to load vehicles on initial render here
+  // as it's already being done in MapWrapper and VehicleDataFetcher
+  // This prevents duplicate data loading and potential memory issues
+
+  // Count active and inactive vehicles
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
   const inactiveVehicles = vehicles.filter((v) => !v.isActive).length;
-
-  // Local loading state specifically for the button click action,
-  // distinct from the store's global loading state
-  const [isButtonClickLoading, setIsButtonClickLoading] = useState(false);
 
   return (
     <div className="flex flex-col gap-2">
@@ -26,26 +25,37 @@ export default function TrackButton() {
         variant="default"
         className="mb-2 ml-0"
         onClick={async () => {
-          // Use the local loading state for the button feedback
-          setIsButtonClickLoading(true);
+          setIsLoading(true);
           try {
-            console.log("Manually triggering vehicle data refresh...");
-            // Simply call the store's function to reload data
-            await loadVehiclesFromDatabase();
-            console.log("Vehicle data refreshed.");
+            console.log("Manually fetching vehicle data...");
+            const response = await fetch("/api/gtfs");
+
+            if (!response.ok) {
+              throw new Error(`API request failed: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.data) {
+              // Get the vehicle store update function
+              const updateVehicles = useVehicleStore.getState().updateVehicles;
+              updateVehicles(result.data);
+
+              // After updating the UI, reload from database to ensure we have the latest data
+              // including any vehicles that were marked inactive in the database
+              await loadVehiclesFromDatabase();
+
+              console.log(`Updated ${result.data.length} vehicles`);
+            }
           } catch (error) {
-            console.error("Error refreshing bus locations:", error);
+            console.error("Error updating bus locations:", error);
           } finally {
-            // Reset the local button loading state
-            setIsButtonClickLoading(false);
+            setIsLoading(false);
           }
         }}
-        // Disable button based on the local click loading state
-        disabled={isButtonClickLoading || isLoading}
+        disabled={isLoading}
       >
-        {isButtonClickLoading || isLoading
-          ? "Updating..."
-          : "Update Bus Location"}
+        {isLoading ? "Updating..." : "Update Bus Location"}
       </Button>
       <div className="text-sm">
         <span className="text-green-600 font-medium">
