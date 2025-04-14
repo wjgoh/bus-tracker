@@ -1,11 +1,12 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useVehicleStore } from "@/store/vehicleStore";
+import { useStopsStore } from "@/store/stopsStore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBusSimple } from "@fortawesome/free-solid-svg-icons";
 import { divIcon } from "leaflet";
 import { renderToString } from "react-dom/server";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import LocationButton from "./LocationButton";
 import { createPortal } from "react-dom";
 import BusStops from "./BusStops";
@@ -118,25 +119,20 @@ export default function Map({
   selectedRoute = "all",
 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);
-  const [stopsData, setStopsData] = useState<string>("");
+  const { stopsData, fetchStopsData } = useStopsStore();
 
-  // Load stops.txt data
+  // Fetch stops data only once and only when a specific route is selected
   useEffect(() => {
-    if (selectedRoute === "all") return;
-    fetch("/api/stops")
-      .then((response) => response.text())
-      .then((data) => {
-        setStopsData(data);
-      })
-      .catch((error) => {
-        console.error("Error loading stops data:", error);
-      });
-  }, [selectedRoute]);
+    if (selectedRoute !== "all") {
+      fetchStopsData();
+    }
+  }, [selectedRoute, fetchStopsData]);
 
-  const filteredVehicles =
-    selectedRoute === "all"
+  const filteredVehicles = useMemo(() => {
+    return selectedRoute === "all"
       ? vehicles
       : vehicles.filter((vehicle) => vehicle.routeId === selectedRoute);
+  }, [vehicles, selectedRoute]);
 
   const getBusIcon = (isActive: boolean) => {
     const iconHtml = renderToString(
