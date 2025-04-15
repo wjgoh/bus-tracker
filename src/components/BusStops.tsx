@@ -21,6 +21,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [relevantStopIds, setRelevantStopIds] = useState<Set<string>>(
     new Set()
   );
+  const [stopsToShow, setStopsToShow] = useState<Stop[]>([]);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
   // Fetch stop_times.txt data
@@ -65,11 +66,11 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       });
   }, [selectedRoute, vehicles]);
 
-  // Parse stops.txt data
+  // Parse stops only once when stopsData changes
   useEffect(() => {
     if (!stopsData) return;
 
-    // Parse stops.txt content
+    console.time("parseStops");
     const stopLines = stopsData
       .split("\n")
       .filter((line) => line.trim().length > 0);
@@ -85,15 +86,21 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
         stop_lon: parseFloat(values[4]),
       };
     });
+    console.timeEnd("parseStops");
 
     setStops(parsedStops);
   }, [stopsData]);
 
-  // Filter stops by route if a specific route is selected
-  const stopsToShow =
-    selectedRoute === "all"
-      ? stops
-      : stops.filter((stop) => relevantStopIds.has(stop.stop_id));
+  // Update filtered stops when relevantStopIds or stops change
+  useEffect(() => {
+    console.time("filterStops");
+    const filteredStops =
+      selectedRoute === "all"
+        ? stops
+        : stops.filter((stop) => relevantStopIds.has(stop.stop_id));
+    setStopsToShow(filteredStops);
+    console.timeEnd("filterStops");
+  }, [selectedRoute, stops, relevantStopIds]);
 
   return (
     <>
