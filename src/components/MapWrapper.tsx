@@ -17,11 +17,6 @@ export default function MapWrapper() {
     async function fetchVehicleData() {
       // Only load from database - no more GTFS API calls
       await loadVehiclesFromDatabase();
-
-      // Only fetch stops data when a specific route is selected
-      if (selectedRoute !== "all") {
-        await fetch("/api/stops");
-      }
     }
 
     fetchVehicleData(); // initial load
@@ -29,7 +24,7 @@ export default function MapWrapper() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [loadVehiclesFromDatabase, selectedRoute]);
+  }, [loadVehiclesFromDatabase]); // Removed selectedRoute from dependency array
 
   const Map = dynamic(() => import("@/components/Map"), {
     ssr: false,

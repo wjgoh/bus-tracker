@@ -1,5 +1,5 @@
 import { CircleMarker, Popup } from "react-leaflet";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { parseStopTimes } from "@/lib/routeUtil";
 import { useVehicleStore } from "@/store/vehicleStore";
 
@@ -24,9 +24,17 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [stopsToShow, setStopsToShow] = useState<Stop[]>([]);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
-  // Fetch stop_times.txt data
+  // Use refs to store data that should persist between renders
+  const stopTimesDataRef = useRef<Map<
+    string,
+    Array<{ stopId: string; sequence: number }>
+  > | null>(null);
+  const dataLoadedRef = useRef(false);
+
+  // Fetch stop_times.txt data only once
   useEffect(() => {
-    if (selectedRoute === "all") return;
+    // Skip if data is already loaded or if all routes are selected
+    if (dataLoadedRef.current) return;
 
     fetch("/api/stop_times")
       .then((response) => {
@@ -38,33 +46,48 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       .then((data) => {
         console.log(`Received stop_times data: ${data.length} bytes`);
 
-        // Parse the stop times data directly without storing in state
-        const parsedTripToStops = parseStopTimes(data);
+        // Parse the stop times data and store in ref
+        stopTimesDataRef.current = parseStopTimes(data);
+        dataLoadedRef.current = true;
 
-        // Find relevant trip IDs for this route
-        const routeVehicles = vehicles.filter(
-          (v) => v.routeId === selectedRoute
-        );
-        if (routeVehicles.length > 0) {
-          // Get all stop IDs for these trip IDs
-          const stopIdsForRoute = new Set<string>();
-          for (const vehicle of routeVehicles) {
-            const tripId = vehicle.tripId;
-            if (parsedTripToStops.has(tripId)) {
-              const stopSequences = parsedTripToStops.get(tripId)!;
-              stopSequences.forEach((item) => stopIdsForRoute.add(item.stopId));
-            }
-          }
-          console.log(
-            `Found ${stopIdsForRoute.size} stops for route ${selectedRoute}`
-          );
-          setRelevantStopIds(stopIdsForRoute);
+        // If we already have a selected route, update the stops right away
+        if (selectedRoute !== "all") {
+          updateRelevantStopsForRoute(selectedRoute);
         }
       })
       .catch((error) => {
         console.error("Error loading stop_times data:", error);
       });
+  }, []); // Empty dependency array means this runs only once
+
+  // Update stops when route changes, using the cached data
+  useEffect(() => {
+    if (selectedRoute === "all" || !dataLoadedRef.current) return;
+
+    updateRelevantStopsForRoute(selectedRoute);
   }, [selectedRoute, vehicles]);
+
+  // Helper function to update stops based on selected route
+  const updateRelevantStopsForRoute = (route: string) => {
+    if (!stopTimesDataRef.current) return;
+
+    // Find relevant trip IDs for this route
+    const routeVehicles = vehicles.filter((v) => v.routeId === route);
+
+    if (routeVehicles.length > 0) {
+      // Get all stop IDs for these trip IDs
+      const stopIdsForRoute = new Set<string>();
+      for (const vehicle of routeVehicles) {
+        const tripId = vehicle.tripId;
+        if (stopTimesDataRef.current.has(tripId)) {
+          const stopSequences = stopTimesDataRef.current.get(tripId)!;
+          stopSequences.forEach((item) => stopIdsForRoute.add(item.stopId));
+        }
+      }
+      console.log(`Found ${stopIdsForRoute.size} stops for route ${route}`);
+      setRelevantStopIds(stopIdsForRoute);
+    }
+  };
 
   // Parse stops only once when stopsData changes
   useEffect(() => {
