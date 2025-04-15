@@ -1,6 +1,6 @@
 import React from "react";
 import { Polyline } from "react-leaflet";
-import { RouteShape } from "./routeUtil";
+import { RouteShape } from "@/lib/routeUtil";
 
 interface RouteShapeProps {
   shapes: RouteShape[];
