@@ -12,7 +12,7 @@ export async function GET() {
       process.cwd(),
       "public",
       "gtfs",
-      "trips.txt"
+      "stops.txt"
     );
 
     // Read the file content
