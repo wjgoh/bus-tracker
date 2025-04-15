@@ -20,10 +20,18 @@ export async function GET() {
     // Get the absolute path to the shapes.txt file
     const shapesFilePath = path.join(
       process.cwd(),
-      "src",
-      "response",
+      "public",
+      "gtfs",
       "shapes.txt"
     );
+
+    // Check if file exists and log path for debugging
+    if (!fs.existsSync(shapesFilePath)) {
+      console.error(`File not found: ${shapesFilePath}`);
+      return new NextResponse(`Shapes file not found at ${shapesFilePath}`, {
+        status: 404,
+      });
+    }
 
     // Read the file content
     const shapesData = fs.readFileSync(shapesFilePath, "utf-8");
@@ -40,6 +48,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Error reading shapes.txt file:", error);
-    return new NextResponse("Error loading shapes data", { status: 500 });
+    return new NextResponse(
+      `Error loading shapes data: ${(error as Error).message}`,
+      { status: 500 }
+    );
   }
 }
