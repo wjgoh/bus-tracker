@@ -10,9 +10,9 @@ export async function GET() {
     // Get the absolute path to the stops.txt file
     const stopsFilePath = path.join(
       process.cwd(),
-      "src",
-      "response",
-      "stops.txt"
+      "public",
+      "gtfs",
+      "trips.txt"
     );
 
     // Read the file content

@@ -10,9 +10,9 @@ export async function GET() {
     // Get the absolute path to the stop_times.txt file
     const stopTimesFilePath = path.join(
       process.cwd(),
-      "src",
-      "response",
-      "stop_times.txt"
+      "public",
+      "gtfs",
+      "trips.txt"
     );
 
     // Check if the file exists
