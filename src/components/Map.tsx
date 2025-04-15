@@ -134,10 +134,24 @@ export default function Map({
   // Load stops.txt data
   useEffect(() => {
     if (selectedRoute === "all") return;
+
+    // Try to get data from localStorage first
+    const cachedStopsData = localStorage.getItem("stopsData");
+    if (cachedStopsData) {
+      console.log("Using cached stops data from localStorage");
+      setStopsData(cachedStopsData);
+      return;
+    }
+
+    // Otherwise fetch from API
+    console.log("Fetching stops data from API...");
     fetch("/api/stops")
       .then((response) => response.text())
       .then((data) => {
+        console.log(`Received stops data: ${data.length} bytes`);
         setStopsData(data);
+        // Cache in localStorage for future use
+        localStorage.setItem("stopsData", data);
       })
       .catch((error) => {
         console.error("Error loading stops data:", error);
@@ -151,9 +165,17 @@ export default function Map({
       return;
     }
 
+    // Try to get data from localStorage first
+    const cachedShapesData = localStorage.getItem("shapesData");
+    if (cachedShapesData && !shapesData) {
+      console.log("Using cached shapes data from localStorage");
+      setShapesData(cachedShapesData);
+      return;
+    }
+
     // Fetch the shapes data if we don't already have it
     if (!shapesData) {
-      console.log("Fetching shapes data...");
+      console.log("Fetching shapes data from API...");
       fetch("/api/shapes")
         .then((response) => {
           if (!response.ok) {
@@ -164,6 +186,8 @@ export default function Map({
         .then((data) => {
           console.log(`Received shapes data: ${data.length} bytes`);
           setShapesData(data);
+          // Cache in localStorage
+          localStorage.setItem("shapesData", data);
         })
         .catch((error) => {
           console.error("Error loading shapes data:", error);
@@ -175,6 +199,14 @@ export default function Map({
   // Load trips.txt data for route-shape relationships
   useEffect(() => {
     if (selectedRoute === "all") return;
+
+    // Try to get data from localStorage first
+    const cachedTripsData = localStorage.getItem("tripsData");
+    if (cachedTripsData && !tripsData) {
+      console.log("Using cached trips data from localStorage");
+      setTripsData(cachedTripsData);
+      return;
+    }
 
     // Fetch the trips data if we don't already have it
     if (!tripsData) {
@@ -189,6 +221,8 @@ export default function Map({
         .then((data) => {
           console.log(`Received trips data: ${data.length} bytes`);
           setTripsData(data);
+          // Cache in localStorage
+          localStorage.setItem("tripsData", data);
         })
         .catch((error) => {
           console.error("Error loading trips data:", error);
@@ -202,6 +236,22 @@ export default function Map({
     if (selectedRoute === "all" || !shapesData || !tripsData) {
       setRouteShapes([]);
       return;
+    }
+
+    // Try to get processed shapes from localStorage first
+    const cacheKey = `routeShapes_${selectedRoute}`;
+    const cachedRouteShapes = localStorage.getItem(cacheKey);
+
+    if (cachedRouteShapes) {
+      try {
+        const parsedShapes = JSON.parse(cachedRouteShapes);
+        console.log(`Using cached processed shapes for route ${selectedRoute}`);
+        setRouteShapes(parsedShapes);
+        return;
+      } catch (error) {
+        console.error("Error parsing cached route shapes:", error);
+        // Continue with processing if parsing fails
+      }
     }
 
     console.log("Processing route shape data...");
@@ -267,6 +317,14 @@ export default function Map({
           first_point: sampleShape.points[0],
           last_point: sampleShape.points[sampleShape.points.length - 1],
         });
+
+        // Cache the processed shapes
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(shapes));
+          console.log(`Cached processed shapes for route ${selectedRoute}`);
+        } catch (error) {
+          console.error("Error caching processed shapes:", error);
+        }
       }
 
       setRouteShapes(shapes);
@@ -301,6 +359,23 @@ export default function Map({
       iconAnchor: [12, 12],
     });
   };
+
+  // Add this to your Map component
+  function clearLocalCache() {
+    localStorage.removeItem("stopsData");
+    localStorage.removeItem("shapesData");
+    localStorage.removeItem("tripsData");
+
+    // Clear all route shape caches
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("routeShapes_")) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    console.log("Local cache cleared");
+  }
 
   return (
     <div className="flex-1 h-full">
