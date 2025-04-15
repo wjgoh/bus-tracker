@@ -12,7 +12,7 @@ export async function GET() {
       process.cwd(),
       "public",
       "gtfs",
-      "trips.txt"
+      "stop_times.txt"
     );
 
     // Check if the file exists
