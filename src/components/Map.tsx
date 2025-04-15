@@ -360,6 +360,23 @@ export default function Map({
     });
   };
 
+  // Add this to your Map component
+  function clearLocalCache() {
+    localStorage.removeItem("stopsData");
+    localStorage.removeItem("shapesData");
+    localStorage.removeItem("tripsData");
+
+    // Clear all route shape caches
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("routeShapes_")) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    console.log("Local cache cleared");
+  }
+
   return (
     <div className="flex-1 h-full">
       <MapContainer
