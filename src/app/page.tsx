@@ -1,14 +1,17 @@
 import MapWrapper from "@/components/MapWrapper";
 import TrackButton from "@/components/TrackButton";
+import GtfsUpdateButton from "@/components/GtfsUpdateButton";
 
 export default function Home() {
   return (
     <div>
-      <main className="flex min-h-screen flex-col items-center p-12 md:p-24 gap-12">
-        {/* Container for Title, Button, and Map */}
-        {/* Changed items-center to items-start here */}
+      <main className="flex min-h-screen flex-col items-center justify-between p-24">
+        <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
+          <h1 className="text-2xl font-bold">Bus Tracker</h1>
+          <GtfsUpdateButton />
+        </div>
+
         <div className="w-full max-w-5xl flex flex-col items-start gap-4">
-          <h1 className="text-4xl font-bold">Bus Tracker</h1> {/* Title */}
           <TrackButton /> {/* Button directly below title */}
           <div className="relative w-full h-[50vh] md:h-[600px] mt-4">
             {" "}
@@ -16,8 +19,6 @@ export default function Home() {
             <MapWrapper />
           </div>
         </div>
-
-        {/* Container for Deploy/Docs Links */}
       </main>
     </div>
   );
