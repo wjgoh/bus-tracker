@@ -10,18 +10,20 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Set up refresh from database only
+  // Effect to fetch stops data when route changes
+  useEffect(() => {
+    if (selectedRoute !== "all") {
+      fetch("/api/stops");
+    }
+  }, [selectedRoute]);
+
+  // Set up refresh for vehicle data only
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
     async function fetchVehicleData() {
       // Only load from database - no more GTFS API calls
       await loadVehiclesFromDatabase();
-
-      // Only fetch stops data when a specific route is selected
-      if (selectedRoute !== "all") {
-        await fetch("/api/stops");
-      }
     }
 
     fetchVehicleData(); // initial load
@@ -29,7 +31,7 @@ export default function MapWrapper() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [loadVehiclesFromDatabase, selectedRoute]);
+  }, [loadVehiclesFromDatabase]);
 
   const Map = dynamic(() => import("@/components/Map"), {
     ssr: false,
