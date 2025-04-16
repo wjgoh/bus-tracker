@@ -11,7 +11,8 @@ export async function fetchAndUnzipGtfsData() {
     const responsePath = path.join(process.cwd(), "src", "response");
     try {
       await fs.access(responsePath);
-    } catch (error) {
+    } catch (_) {
+      // If directory doesn't exist, create it
       await fs.mkdir(responsePath, { recursive: true });
     }
 
