@@ -63,7 +63,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       .catch((error) => {
         console.error("Error loading stop_times data:", error);
       });
-  }, [selectedRoute, vehicles]);
+  }, [selectedRoute]);
 
   // Parse stops.txt data
   useEffect(() => {

@@ -15,6 +15,7 @@ import {
   parseShapes,
   parseTrips,
   buildRouteShapes,
+  parseStopTimes,
 } from "@/lib/routeUtil";
 
 interface MapProps {
@@ -28,6 +29,8 @@ function MapController({ selectedRoute }: { selectedRoute: string }) {
   const map = useMap();
   const vehicles = useVehicleStore((state) => state.vehicles);
   const mapRef = useRef(map);
+  const [stopsData, setStopsData] = useState<string>("");
+  const [stopTimeData, setStopTimeData] = useState<string>("");
 
   // Track if we've already zoomed for the current route selection
   const [hasZoomed, setHasZoomed] = useState(false);
@@ -42,32 +45,111 @@ function MapController({ selectedRoute }: { selectedRoute: string }) {
     setHasZoomed(false);
   }, [selectedRoute]);
 
+  // Fetch stops data when route changes
   useEffect(() => {
-    // Only zoom once per route selection and only if a specific route is selected (not "all")
-    if (!hasZoomed && selectedRoute !== "all") {
-      // Find active buses for the selected route
-      const activeBuses = vehicles.filter(
-        (vehicle) => vehicle.routeId === selectedRoute && vehicle.isActive
-      );
+    if (selectedRoute === "all" || hasZoomed) return;
 
-      // If there are active buses, zoom to the first one
-      if (activeBuses.length > 0) {
-        const firstBus = activeBuses[0];
-        const lat = parseFloat(firstBus.latitude);
-        const lng = parseFloat(firstBus.longitude);
+    Promise.all([
+      fetch("/api/stops").then((res) => res.text()),
+      fetch("/api/stop_times").then((res) => res.text()),
+    ])
+      .then(([stops, stopTimes]) => {
+        setStopsData(stops);
+        setStopTimeData(stopTimes);
+      })
+      .catch((err) => {
+        console.error("Error fetching stops data:", err);
+      });
+  }, [selectedRoute, hasZoomed]);
 
-        if (!isNaN(lat) && !isNaN(lng)) {
-          map.flyTo([lat, lng], 15, {
-            animate: true,
-            duration: 1.5,
-          });
+  // Zoom to show all stops for the route
+  useEffect(() => {
+    if (!hasZoomed && selectedRoute !== "all" && stopsData && stopTimeData) {
+      try {
+        // Find relevant trip IDs for this route
+        const routeVehicles = vehicles.filter(
+          (v) => v.routeId === selectedRoute
+        );
+        if (routeVehicles.length === 0) return;
+
+        // Get trip IDs for the route
+        const tripIds = routeVehicles.map((v) => v.tripId);
+
+        // Parse stop times to get stop IDs for these trips
+        const parsedTripToStops = parseStopTimes(stopTimeData);
+        const stopIdsForRoute = new Set<string>();
+
+        for (const tripId of tripIds) {
+          if (parsedTripToStops.has(tripId)) {
+            const stopSequences = parsedTripToStops.get(tripId)!;
+            stopSequences.forEach((item) => stopIdsForRoute.add(item.stopId));
+          }
+        }
+
+        // Parse stops to get coordinates
+        const stopLines = stopsData
+          .split("\n")
+          .filter((line) => line.trim().length > 0);
+
+        // Use a plain JavaScript object instead of Map
+        const stopsMap: Record<string, { lat: number; lng: number }> = {};
+
+        // Skip header row and parse the data
+        stopLines.slice(1).forEach((line) => {
+          const values = line.split(",");
+          // Use object property instead of Map.set()
+          stopsMap[values[0]] = {
+            lat: parseFloat(values[3]),
+            lng: parseFloat(values[4]),
+          };
+        });
+
+        // Get coordinates for all stops in this route
+        const stopCoords = Array.from(stopIdsForRoute)
+          .map((stopId) => stopsMap[stopId])
+          .filter((coord) => coord && !isNaN(coord.lat) && !isNaN(coord.lng));
+
+        if (stopCoords.length > 0) {
+          // Calculate bounding box for all stops
+          const bounds = stopCoords.reduce(
+            (box, coord) => {
+              return {
+                minLat: Math.min(box.minLat, coord.lat),
+                maxLat: Math.max(box.maxLat, coord.lat),
+                minLng: Math.min(box.minLng, coord.lng),
+                maxLng: Math.max(box.maxLng, coord.lng),
+              };
+            },
+            {
+              minLat: Infinity,
+              maxLat: -Infinity,
+              minLng: Infinity,
+              maxLng: -Infinity,
+            }
+          );
+
+          // Add padding to bounds
+          const paddingFactor = 0.1;
+          const latPadding = (bounds.maxLat - bounds.minLat) * paddingFactor;
+          const lngPadding = (bounds.maxLng - bounds.minLng) * paddingFactor;
+
+          // Set bounds on the map
+          map.fitBounds(
+            [
+              [bounds.minLat - latPadding, bounds.minLng - lngPadding],
+              [bounds.maxLat + latPadding, bounds.maxLng + lngPadding],
+            ],
+            { animate: true, duration: 1.5 }
+          );
 
           // Mark that we've zoomed for this route selection
           setHasZoomed(true);
         }
+      } catch (error) {
+        console.error("Error processing stops for zooming:", error);
       }
     }
-  }, [selectedRoute, vehicles, map, hasZoomed]);
+  }, [selectedRoute, stopsData, stopTimeData, vehicles, map, hasZoomed]);
 
   // Handle location found from LocationButton
   const handleLocationFound = useCallback(
