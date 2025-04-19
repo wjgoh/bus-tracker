@@ -3,6 +3,7 @@ import ClientLayout from "./ClientLayout";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GtfsDataLoader } from "./GtfsDataLoader";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -18,8 +19,18 @@ export default async function RootLayout({
   await GtfsDataLoader();
 
   return (
-    <html lang="en">
-      <ClientLayout>{children}</ClientLayout>
+    <html lang="en" suppressHydrationWarning>
+      <head />
+      <ClientLayout>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </ClientLayout>
       <SpeedInsights />
     </html>
   );

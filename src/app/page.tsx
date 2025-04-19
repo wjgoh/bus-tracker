@@ -1,6 +1,7 @@
 import MapWrapper from "@/components/MapWrapper";
 import TrackButton from "@/components/TrackButton";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
       <main className="flex min-h-screen flex-col items-center justify-between p-24">
         <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
           <h1 className="text-2xl font-bold">Bus Tracker</h1>
+          <ThemeToggle />
         </div>
 
         <div className="w-full max-w-5xl flex flex-col items-start gap-4">
