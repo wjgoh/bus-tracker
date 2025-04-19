@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useCallback, useMemo } from "react";
 import RouteSelector from "@/components/ui/RouteSelector";
 import { useVehicleStore } from "@/store/vehicleStore";
 
@@ -9,6 +9,11 @@ export default function MapWrapper() {
   const loadVehiclesFromDatabase = useVehicleStore(
     (state) => state.loadVehiclesFromDatabase
   );
+
+  // Debounced route selection handling
+  const handleRouteChange = useCallback((route: string) => {
+    setSelectedRoute(route);
+  }, []);
 
   // Effect to fetch stops data when route changes
   useEffect(() => {
@@ -22,7 +27,6 @@ export default function MapWrapper() {
     let intervalId: NodeJS.Timeout | null = null;
 
     async function fetchVehicleData() {
-      // Only load from database - no more GTFS API calls
       await loadVehiclesFromDatabase();
     }
 
@@ -33,17 +37,22 @@ export default function MapWrapper() {
     };
   }, [loadVehiclesFromDatabase]);
 
-  const Map = dynamic(() => import("@/components/Map"), {
-    ssr: false,
-    loading: () => <p>Loading map...</p>,
-  });
+  // Memoize the dynamic Map component to prevent unnecessary re-creation
+  const Map = useMemo(
+    () =>
+      dynamic(() => import("@/components/Map"), {
+        ssr: false,
+        loading: () => <p>Loading map...</p>,
+      }),
+    []
+  );
 
   return (
     <div className="relative w-full h-full">
       <div className="z-10 relative">
         <RouteSelector
           selectedRoute={selectedRoute}
-          onRouteChange={setSelectedRoute}
+          onRouteChange={handleRouteChange}
         />
       </div>
       <div className="w-full h-[calc(100%-60px)] relative z-0">
