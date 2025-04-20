@@ -41,13 +41,7 @@ export default function RouteSelector({
   ];
 
   return (
-    <div className="flex items-center justify-between gap-4 mb-4">
-      <div className="text-sm text-muted-foreground">
-        Buses Located:{" "}
-        {selectedRoute === "all"
-          ? vehicles.length
-          : vehicles.filter((v) => v.routeId === selectedRoute).length}
-      </div>
+    <div className="flex items-center justify-end gap-4 mb-4">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

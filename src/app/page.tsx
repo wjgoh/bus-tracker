@@ -4,17 +4,13 @@ import { SidebarInset } from "@/components/ui/sidebar";
 
 export default function Home() {
   return (
-    <>
+    <div className="flex h-screen w-screen overflow-hidden">
       <BusTrackerSidebar />
-      <SidebarInset>
-        <main className="flex min-h-screen flex-col items-center justify-between p-4 md:p-8">
-          <div className="w-full max-w-5xl flex flex-col items-start gap-4">
-            <div className="relative w-full h-[50vh] md:h-[600px]">
-              <MapWrapper />
-            </div>
-          </div>
+      <SidebarInset className="flex-1 relative">
+        <main className="absolute inset-0">
+          <MapWrapper />
         </main>
       </SidebarInset>
-    </>
+    </div>
   );
 }
