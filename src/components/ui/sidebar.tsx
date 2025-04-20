@@ -47,7 +47,8 @@ const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       setIsCollapsedInternal(variant === "collapsed");
     }, [variant]);
 
-    const isCollapsed = variant === "collapsed";
+    // Use the internal state for determining if collapsed
+    const isCollapsed = isCollapsedInternal;
 
     // Add toggle function that uses the collapsible prop
     const toggleCollapse = React.useCallback(() => {
@@ -72,11 +73,7 @@ const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
         {...props}
       >
         <div className="flex flex-col h-full">
-          {collapsible && (
-            <div className="p-2 flex justify-end">
-              {/* You could add a collapse button here if needed */}
-            </div>
-          )}
+          {collapsible && <div className="p-2 flex justify-end"></div>}
           <div className="flex-1 overflow-y-auto p-4">{children}</div>
         </div>
       </div>
@@ -85,5 +82,4 @@ const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
 );
 
 Sidebar.displayName = "Sidebar";
-
 export { Sidebar, sidebarVariants };
