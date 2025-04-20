@@ -4,6 +4,7 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GtfsDataLoader } from "./GtfsDataLoader";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Sidebar } from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -28,7 +29,10 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="flex h-screen">
+            <Sidebar />
+            <main className="flex-1 overflow-auto">{children}</main>
+          </div>
         </ThemeProvider>
       </ClientLayout>
       <SpeedInsights />
