@@ -51,17 +51,6 @@ const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
     const isCollapsed = isCollapsedInternal;
 
     // Add toggle function that uses the collapsible prop
-    const toggleCollapse = React.useCallback(() => {
-      if (collapsible) {
-        setIsCollapsedInternal((prev) => !prev);
-      }
-    }, [collapsible]);
-
-    React.useEffect(() => {
-      if (onCollapseChange) {
-        onCollapseChange(isCollapsedInternal);
-      }
-    }, [isCollapsedInternal, onCollapseChange]);
 
     return (
       <div
