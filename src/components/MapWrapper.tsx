@@ -1,28 +1,17 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense, useEffect, useMemo } from "react";
+import { useState, Suspense, useEffect, useCallback, useMemo } from "react";
 import { useVehicleStore } from "@/store/vehicleStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseStopTimes } from "@/lib/routeUtil";
-
-// Define a proper type for the stop data
-interface StopData {
-  stop_id: string;
-  stop_code: string;
-  stop_name: string;
-  stop_lat: number;
-  stop_lon: number;
-  sequence?: number;
-  isTerminalEnd?: boolean;
-  isDuplicate?: boolean;
-}
 
 export default function MapWrapper() {
   const selectedRoute = useVehicleStore(
     (state) => state.selectedRoute || "all"
   );
   const vehicles = useVehicleStore((state) => state.vehicles);
-  const [stopsData, setStopsData] = useState<StopData[]>([]);
+  const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
+  const [stopsData, setStopsData] = useState<any[]>([]);
   // Use a different name than 'Map' for the Map constructor
   const [tripToStopsMap, setTripToStopsMap] = useState<
     globalThis.Map<string, Array<{ stopId: string; sequence: number }>>
@@ -37,6 +26,14 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
+  // Debounced route selection handling
+  const handleRouteChange = useCallback(
+    (route: string) => {
+      setSelectedRoute(route);
+    },
+    [setSelectedRoute]
+  );
+
   // Effect to fetch stops data when component mounts (not when route changes)
   useEffect(() => {
     setLoadingStops(true);
@@ -46,8 +43,7 @@ export default function MapWrapper() {
         const stopLines = data
           .split("\n")
           .filter((line) => line.trim().length > 0);
-        // We can just skip storing the headers completely since we don't use them
-        stopLines[0].split(","); // Parse header row but don't store it
+        const headers = stopLines[0].split(",");
 
         // Parse stops data
         const parsedStops = stopLines.slice(1).map((line) => {
@@ -192,6 +188,28 @@ export default function MapWrapper() {
     return firstStop.stop_id === lastStop.stop_id;
   }, [filteredStopsWithSequence]);
 
+  // Prepare the display data by cloning the last stop and adding it as the first stop
+  const displayStops = useMemo(() => {
+    if (filteredStopsWithSequence.length === 0) {
+      return [];
+    }
+
+    // Clone the last stop and add it as the first stop with special flag
+    if (filteredStopsWithSequence.length > 1) {
+      const lastStop =
+        filteredStopsWithSequence[filteredStopsWithSequence.length - 1];
+      const clonedLastStop = {
+        ...lastStop,
+        isClonedAsFirst: true,
+        isDuplicate: true,
+      };
+
+      return [clonedLastStop, ...filteredStopsWithSequence];
+    }
+
+    return filteredStopsWithSequence;
+  }, [filteredStopsWithSequence]);
+
   return (
     <div className="relative w-full h-full">
       <div className="w-full h-full relative z-0">
@@ -212,7 +230,7 @@ export default function MapWrapper() {
             <CardContent className="pt-2">
               {loadingStops ? (
                 <p className="text-sm">Loading stops...</p>
-              ) : filteredStopsWithSequence.length === 0 ? (
+              ) : displayStops.length === 0 ? (
                 <p className="text-sm">No stops found for this route.</p>
               ) : (
                 <div className="space-y-2">
@@ -226,13 +244,13 @@ export default function MapWrapper() {
                     )}
                   </p>
                   <div className="space-y-1 max-h-60 overflow-y-auto">
-                    {filteredStopsWithSequence.map((stop, index) => {
+                    {displayStops.map((stop, index) => {
                       const isFirst = index === 0;
-                      const isLast =
-                        index === filteredStopsWithSequence.length - 1;
-                      // Remove unused variable
+                      const isLast = index === displayStops.length - 1;
+                      const isOriginalFirst = index === 1; // Second item is the actual first stop of original data
+                      const isOriginalLast = index === displayStops.length - 1; // Last item remains the last stop
+                      const isClonedLastStop = stop.isClonedAsFirst;
 
-                      // Don't filter out the last stop anymore - even for circular routes
                       return (
                         <div
                           key={`${stop.stop_id}-${index}`} // Add index to key to avoid duplicate key issues
@@ -240,13 +258,18 @@ export default function MapWrapper() {
                         >
                           <div className="mr-2 mt-0.5 flex-shrink-0">
                             <span className="inline-flex items-center justify-center w-5 h-5 bg-primary/10 text-primary text-xs font-medium rounded-full">
-                              {index + 1}
+                              {index} {/* Zero-based index to show stop #0 */}
                             </span>
                           </div>
                           <div>
                             <div className="font-medium">
                               {stop.stop_name}
-                              {isFirst && (
+                              {isClonedLastStop && (
+                                <span className="ml-1 text-blue-500 font-bold">
+                                  • Mrt Stop
+                                </span>
+                              )}
+                              {isOriginalFirst && (
                                 <span
                                   className={`ml-1 ${
                                     isCircularRoute
@@ -259,14 +282,14 @@ export default function MapWrapper() {
                                     : "• First Stop"}
                                 </span>
                               )}
-                              {isLast && isCircularRoute && (
-                                <span className="ml-1 text-purple-500 font-bold">
-                                  • Terminal End
-                                </span>
-                              )}
-                              {isLast && !isCircularRoute && (
+                              {isOriginalLast && !isCircularRoute && (
                                 <span className="ml-1 text-red-500 font-bold">
                                   • Last Stop
+                                </span>
+                              )}
+                              {isOriginalLast && isCircularRoute && (
+                                <span className="ml-1 text-purple-500 font-bold">
+                                  • Terminal End
                                 </span>
                               )}
                             </div>

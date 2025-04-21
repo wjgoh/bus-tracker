@@ -39,7 +39,7 @@ export async function saveVehicleData(
       // For each vehicle, insert or update its data
       for (const vehicle of vehicles) {
         const query = `
-          INSERT INTO vehicle_positions (
+          INSERT INTO rapid_bus_mrtfeeder (
             vehicle_id, trip_id, route_id, latitude, longitude, 
             timestamp, congestion, stop_id, status, is_active, last_seen
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -82,7 +82,7 @@ export async function saveVehicleData(
           .join(",");
         await client.query(
           `
-          UPDATE vehicle_positions
+          UPDATE rapid_bus_mrtfeeder
           SET is_active = false, updated_at = NOW()
           WHERE vehicle_id NOT IN (${placeholders})
           AND is_active = true
@@ -121,7 +121,7 @@ export async function getAllVehicleData() {
         status, 
         is_active as "isActive", 
         last_seen as "lastSeen"
-      FROM vehicle_positions
+      FROM rapid_bus_mrtfeeder
     `);
 
     return { success: true, data: result.rows };
@@ -136,7 +136,7 @@ export async function getActiveVehicleIds() {
   try {
     const result = await db.query<{ vehicleId: string }>(`
       SELECT vehicle_id as "vehicleId"
-      FROM vehicle_positions
+      FROM rapid_bus_mrtfeeder
       WHERE is_active = true
     `);
 
