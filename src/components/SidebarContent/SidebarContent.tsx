@@ -27,13 +27,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
 import TrackButton from "@/components/TrackButton";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -48,23 +43,37 @@ import { useVehicleStore } from "@/store/vehicleStore";
 export function BusTrackerSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openRoutes, setOpenRoutes] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const vehicles = useVehicleStore((state) => state.vehicles);
+
+  // Access the vehicle store
+  const selectedRoute =
+    useVehicleStore((state) => state.selectedRoute) || "all";
+  const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
 
   // Get unique route options and format them for the ComboBox
   const routeOptions = [
-    { value: "all", label: "All Routes" },
+    { value: "all", label: "All Mrt Feeder Bus" },
     ...Array.from(new Set(vehicles.map((v) => v.routeId)))
       .filter(Boolean)
       .sort()
       .map((route) => ({ value: route, label: route })),
   ];
 
+  // Filter routes based on search query
+  const filteredRoutes = routeOptions.filter((route) =>
+    route.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Enhanced handler for route selection
+  const handleRouteSelect = (route: string) => {
+    console.log(`Selected route: ${route}`); // Debug logging
+    setSelectedRoute(route);
+    setOpenRoutes(false);
+  };
+
   return (
     <>
-      {/* Actual sidebar - Move trigger inside sidebar */}
       <Sidebar>
-        {/* Sidebar trigger button now inside the sidebar component */}
         <SidebarTrigger className="absolute -right-12 top-4 bg-background border shadow-sm rounded-md" />
 
         <SidebarHeader>
@@ -75,74 +84,90 @@ export function BusTrackerSidebar() {
         </SidebarHeader>
 
         <SidebarContent>
-          {/* Search Bar with Combobox */}
-          <div className="px-3 mb-4 space-y-2">
-            <div className="relative">
-              <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Quick search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 py-2 h-9 text-sm"
-              />
-            </div>
+          <SidebarGroup>
+            <SidebarGroupLabel>Route Selection</SidebarGroupLabel>
+            <SidebarGroupContent>
+              {/* Search Bar */}
+              <div className="px-3 mb-3">
+                <div className="relative">
+                  <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search routes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 py-2 h-9 text-sm"
+                  />
+                </div>
+              </div>
 
-            <Popover open={openRoutes} onOpenChange={setOpenRoutes}>
-              <PopoverTrigger asChild>
+              {/* Route Selector */}
+              <div className="px-3 mb-3 relative">
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={openRoutes}
                   className="w-full justify-between text-sm h-9"
+                  onClick={() => setOpenRoutes(!openRoutes)}
                 >
-                  {selectedRoute
-                    ? routeOptions.find(
+                  {selectedRoute === "all"
+                    ? "All Mrt Feeder Bus"
+                    : routeOptions.find(
                         (route) => route.value === selectedRoute
-                      )?.label || selectedRoute
-                    : "Find a route..."}
+                      )?.label || "Select route..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
-                <Command>
-                  <CommandInput
-                    placeholder="Search routes..."
-                    className="h-9"
-                  />
-                  <CommandEmpty>No routes found.</CommandEmpty>
-                  <CommandList>
-                    <CommandGroup>
-                      {routeOptions.map((route) => (
-                        <CommandItem
-                          key={route.value}
-                          value={route.value}
-                          onSelect={(currentValue) => {
-                            setSelectedRoute(
-                              currentValue === selectedRoute
-                                ? null
-                                : currentValue
-                            );
-                            setOpenRoutes(false);
-                          }}
-                        >
-                          <CheckIcon
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedRoute === route.value
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                          {route.label}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+
+                {openRoutes && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-md">
+                    <Command className="rounded-lg border">
+                      <CommandInput
+                        placeholder="Find route..."
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                      />
+                      <CommandList className="max-h-60 overflow-auto">
+                        <CommandEmpty>No routes found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredRoutes.map((route) => (
+                            <CommandItem
+                              key={route.value}
+                              value={route.value}
+                              onSelect={handleRouteSelect}
+                              className="cursor-pointer"
+                            >
+                              <CheckIcon
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedRoute === route.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {route.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
+
+              {/* Current Selection */}
+              {selectedRoute !== "all" && (
+                <div className="px-3 mb-3">
+                  <p className="text-sm text-muted-foreground">
+                    Currently showing:
+                    <span className="font-semibold ml-1 text-foreground">
+                      {routeOptions.find((r) => r.value === selectedRoute)
+                        ?.label || selectedRoute}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </SidebarGroupContent>
+          </SidebarGroup>
 
           <SidebarGroup>
             <SidebarGroupLabel>Navigation</SidebarGroupLabel>
@@ -189,7 +214,6 @@ export function BusTrackerSidebar() {
                 <GtfsUpdateButton />
               </div>
             </SidebarGroupContent>
-            <SidebarGroup></SidebarGroup>
           </SidebarGroup>
         </SidebarContent>
 
