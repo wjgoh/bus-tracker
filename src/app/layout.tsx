@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import ClientLayout from "./ClientLayout";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { GtfsDataLoader } from "./GtfsDataLoader";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -16,7 +16,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Load the data on server side
-  await GtfsDataLoader();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -28,7 +27,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <SidebarProvider defaultOpen={false}>{children}</SidebarProvider>
         </ThemeProvider>
       </ClientLayout>
       <SpeedInsights />

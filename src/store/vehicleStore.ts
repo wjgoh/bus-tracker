@@ -16,8 +16,10 @@ export type VehiclePosition = {
 
 type VehicleStore = {
   vehicles: VehiclePosition[];
+  selectedRoute: string;
   isLoading: boolean;
   setVehicles: (vehicles: VehiclePosition[]) => void;
+  setSelectedRoute: (route: string) => void;
   updateVehicles: (vehicles: VehiclePosition[]) => void;
   markInactiveVehicles: (activeVehicleIds: string[]) => void;
   loadVehiclesFromDatabase: () => Promise<void>;
@@ -25,6 +27,7 @@ type VehicleStore = {
 
 export const useVehicleStore = create<VehicleStore>((set) => ({
   vehicles: [],
+  selectedRoute: "all",
   isLoading: false,
   setVehicles: (vehicles) => {
     // When setting vehicles for the first time, mark them all as active
@@ -35,6 +38,7 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
     }));
     set({ vehicles: enhancedVehicles });
   },
+  setSelectedRoute: (route) => set({ selectedRoute: route }),
   updateVehicles: (vehicles) =>
     set((state) => {
       const existingVehicles = new Map(
