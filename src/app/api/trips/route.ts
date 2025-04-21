@@ -11,7 +11,7 @@ export async function GET() {
     const tripsFilePath = path.join(
       process.cwd(),
       "src",
-      "response",
+      "rapid_bus_mrtfeeder",
       "trips.txt"
     );
 

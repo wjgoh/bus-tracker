@@ -27,7 +27,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
 import TrackButton from "@/components/TrackButton";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -39,20 +39,45 @@ import {
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { useVehicleStore } from "@/store/vehicleStore";
+import { BusType } from "@/lib/db";
+
+// Define bus type options with more readable labels
+const BUS_TYPE_OPTIONS = [
+  { value: "mrtfeeder", label: "MRT Feeder Buses" },
+  { value: "kl", label: "KL Rapid Buses" },
+];
 
 export function BusTrackerSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openRoutes, setOpenRoutes] = useState(false);
+  const [openBusTypes, setOpenBusTypes] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
   // Access the vehicle store
   const selectedRoute =
     useVehicleStore((state) => state.selectedRoute) || "all";
+  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
+  const setSelectedBusType = useVehicleStore(
+    (state) => state.setSelectedBusType
+  );
+  const loadVehiclesFromDatabase = useVehicleStore(
+    (state) => state.loadVehiclesFromDatabase
+  );
+
+  // Effect to reload vehicles when bus type changes
+  useEffect(() => {
+    loadVehiclesFromDatabase(selectedBusType);
+  }, [selectedBusType, loadVehiclesFromDatabase]);
 
   // Get unique route options and format them for the ComboBox
   const routeOptions = [
-    { value: "all", label: "All Mrt Feeder Bus" },
+    {
+      value: "all",
+      label: `All ${
+        selectedBusType === "kl" ? "KL Rapid" : "MRT Feeder"
+      } Buses`,
+    },
     ...Array.from(new Set(vehicles.map((v) => v.routeId)))
       .filter(Boolean)
       .sort()
@@ -71,6 +96,13 @@ export function BusTrackerSidebar() {
     setOpenRoutes(false);
   };
 
+  // Handler for bus type selection
+  const handleBusTypeSelect = (busType: BusType) => {
+    console.log(`Selected bus type: ${busType}`); // Debug logging
+    setSelectedBusType(busType);
+    setOpenBusTypes(false);
+  };
+
   return (
     <>
       <Sidebar>
@@ -84,6 +116,59 @@ export function BusTrackerSidebar() {
         </SidebarHeader>
 
         <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Bus Type</SidebarGroupLabel>
+            <SidebarGroupContent>
+              {/* Bus Type Selector */}
+              <div className="px-3 mb-3 relative">
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openBusTypes}
+                  className="w-full justify-between text-sm h-9"
+                  onClick={() => setOpenBusTypes(!openBusTypes)}
+                >
+                  {BUS_TYPE_OPTIONS.find(
+                    (option) => option.value === selectedBusType
+                  )?.label || "Select bus type..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+
+                {openBusTypes && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-md">
+                    <Command className="rounded-lg border">
+                      <CommandList className="max-h-60 overflow-auto">
+                        <CommandEmpty>No options available.</CommandEmpty>
+                        <CommandGroup>
+                          {BUS_TYPE_OPTIONS.map((option) => (
+                            <CommandItem
+                              key={option.value}
+                              value={option.value}
+                              onSelect={() =>
+                                handleBusTypeSelect(option.value as BusType)
+                              }
+                              className="cursor-pointer"
+                            >
+                              <CheckIcon
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedBusType === option.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {option.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
           <SidebarGroup>
             <SidebarGroupLabel>Route Selection</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -111,7 +196,9 @@ export function BusTrackerSidebar() {
                   onClick={() => setOpenRoutes(!openRoutes)}
                 >
                   {selectedRoute === "all"
-                    ? "All Mrt Feeder Bus"
+                    ? `All ${
+                        selectedBusType === "kl" ? "KL Rapid" : "MRT Feeder"
+                      } Buses`
                     : routeOptions.find(
                         (route) => route.value === selectedRoute
                       )?.label || "Select route..."}

@@ -11,7 +11,7 @@ export async function GET() {
     const shapesFilePath = path.join(
       process.cwd(),
       "src",
-      "response",
+      "rapid_bus_mrtfeeder",
       "shapes.txt"
     );
 

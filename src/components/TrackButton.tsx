@@ -7,13 +7,10 @@ import { useState } from "react";
 export default function TrackButton() {
   const [isLoading, setIsLoading] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const loadVehiclesFromDatabase = useVehicleStore(
     (state) => state.loadVehiclesFromDatabase
   );
-
-  // We don't need to load vehicles on initial render here
-  // as it's already being done in MapWrapper and VehicleDataFetcher
-  // This prevents duplicate data loading and potential memory issues
 
   // Count active and inactive vehicles
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
@@ -27,8 +24,10 @@ export default function TrackButton() {
         onClick={async () => {
           setIsLoading(true);
           try {
-            console.log("Manually fetching vehicle data...");
-            const response = await fetch("/api/gtfs");
+            console.log(`Manually fetching ${selectedBusType} vehicle data...`);
+            const response = await fetch(
+              `/api/gtfs?busType=${selectedBusType}`
+            );
 
             if (!response.ok) {
               throw new Error(`API request failed: ${response.status}`);
@@ -43,7 +42,7 @@ export default function TrackButton() {
 
               // After updating the UI, reload from database to ensure we have the latest data
               // including any vehicles that were marked inactive in the database
-              await loadVehiclesFromDatabase();
+              await loadVehiclesFromDatabase(selectedBusType);
 
               console.log(`Updated ${result.data.length} vehicles`);
             }

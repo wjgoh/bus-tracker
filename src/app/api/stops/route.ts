@@ -11,7 +11,7 @@ export async function GET() {
     const stopsFilePath = path.join(
       process.cwd(),
       "src",
-      "response",
+      "rapid_bus_mrtfeeder",
       "stops.txt"
     );
 

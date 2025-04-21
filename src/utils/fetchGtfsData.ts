@@ -8,7 +8,7 @@ export async function fetchAndUnzipGtfsData() {
     console.log("Fetching GTFS data from API...");
 
     // Create response directory if it doesn't exist
-    const responsePath = path.join(process.cwd(), "src", "response");
+    const responsePath = path.join(process.cwd(), "src", "rapid_bus_mrtfeeder");
     try {
       await fs.access(responsePath);
     } catch {

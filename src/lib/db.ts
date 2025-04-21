@@ -24,12 +24,18 @@ export type VehicleData = {
   lastSeen: string;
 };
 
+// Define the bus types we support
+export type BusType = "mrtfeeder" | "kl";
+
 // Function to save vehicle data to the database
 export async function saveVehicleData(
   vehicles: VehicleData[],
+  busType: BusType = "mrtfeeder",
   activeVehicleIds?: string[]
 ) {
   try {
+    const tableName = `rapid_bus_${busType}`;
+
     // Begin a transaction
     const client = await db.connect();
 
@@ -39,7 +45,7 @@ export async function saveVehicleData(
       // For each vehicle, insert or update its data
       for (const vehicle of vehicles) {
         const query = `
-          INSERT INTO rapid_bus_mrtfeeder (
+          INSERT INTO ${tableName} (
             vehicle_id, trip_id, route_id, latitude, longitude, 
             timestamp, congestion, stop_id, status, is_active, last_seen
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -82,7 +88,7 @@ export async function saveVehicleData(
           .join(",");
         await client.query(
           `
-          UPDATE rapid_bus_mrtfeeder
+          UPDATE ${tableName}
           SET is_active = false, updated_at = NOW()
           WHERE vehicle_id NOT IN (${placeholders})
           AND is_active = true
@@ -106,8 +112,10 @@ export async function saveVehicleData(
 }
 
 // Function to get all vehicle data from the database
-export async function getAllVehicleData() {
+export async function getAllVehicleData(busType: BusType = "mrtfeeder") {
   try {
+    const tableName = `rapid_bus_${busType}`;
+
     const result = await db.query<VehicleData>(`
       SELECT 
         vehicle_id as "vehicleId", 
@@ -121,7 +129,7 @@ export async function getAllVehicleData() {
         status, 
         is_active as "isActive", 
         last_seen as "lastSeen"
-      FROM rapid_bus_mrtfeeder
+      FROM ${tableName}
     `);
 
     return { success: true, data: result.rows };
@@ -132,11 +140,13 @@ export async function getAllVehicleData() {
 }
 
 // Function to get active vehicle IDs
-export async function getActiveVehicleIds() {
+export async function getActiveVehicleIds(busType: BusType = "mrtfeeder") {
   try {
+    const tableName = `rapid_bus_${busType}`;
+
     const result = await db.query<{ vehicleId: string }>(`
       SELECT vehicle_id as "vehicleId"
-      FROM rapid_bus_mrtfeeder
+      FROM ${tableName}
       WHERE is_active = true
     `);
 

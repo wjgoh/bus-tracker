@@ -21,6 +21,7 @@ export default function MapWrapper() {
   const selectedRoute = useVehicleStore(
     (state) => state.selectedRoute || "all"
   );
+  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const vehicles = useVehicleStore((state) => state.vehicles);
   const [stopsData, setStopsData] = useState<StopData[]>([]);
   // Use a different name than 'Map' for the Map constructor
@@ -121,7 +122,11 @@ export default function MapWrapper() {
     let intervalId: NodeJS.Timeout | null = null;
 
     async function fetchVehicleData() {
-      await loadVehiclesFromDatabase();
+      try {
+        await loadVehiclesFromDatabase(selectedBusType);
+      } catch (error) {
+        console.error("Error fetching vehicle data:", error);
+      }
     }
 
     fetchVehicleData(); // initial load
@@ -129,7 +134,7 @@ export default function MapWrapper() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [loadVehiclesFromDatabase]);
+  }, [loadVehiclesFromDatabase, selectedBusType]);
 
   // Memoize the dynamic Map component to prevent unnecessary re-creation
   const MapComponent = useMemo(

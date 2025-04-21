@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { BusType } from "@/lib/db";
 
 export type VehiclePosition = {
   tripId: string;
@@ -17,17 +18,20 @@ export type VehiclePosition = {
 type VehicleStore = {
   vehicles: VehiclePosition[];
   selectedRoute: string;
+  selectedBusType: BusType;
   isLoading: boolean;
   setVehicles: (vehicles: VehiclePosition[]) => void;
   setSelectedRoute: (route: string) => void;
+  setSelectedBusType: (busType: BusType) => void;
   updateVehicles: (vehicles: VehiclePosition[]) => void;
   markInactiveVehicles: (activeVehicleIds: string[]) => void;
-  loadVehiclesFromDatabase: () => Promise<void>;
+  loadVehiclesFromDatabase: (busType?: BusType) => Promise<void>;
 };
 
-export const useVehicleStore = create<VehicleStore>((set) => ({
+export const useVehicleStore = create<VehicleStore>((set, get) => ({
   vehicles: [],
   selectedRoute: "all",
+  selectedBusType: "mrtfeeder",
   isLoading: false,
   setVehicles: (vehicles) => {
     // When setting vehicles for the first time, mark them all as active
@@ -39,6 +43,12 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
     set({ vehicles: enhancedVehicles });
   },
   setSelectedRoute: (route) => set({ selectedRoute: route }),
+  setSelectedBusType: (busType) =>
+    set({
+      selectedBusType: busType,
+      // Reset route selection when changing bus type
+      selectedRoute: "all",
+    }),
   updateVehicles: (vehicles) =>
     set((state) => {
       const existingVehicles = new Map(
@@ -80,35 +90,30 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
 
       return { vehicles: updatedVehicles };
     }),
-  loadVehiclesFromDatabase: async () => {
+  loadVehiclesFromDatabase: async (busType) => {
+    const currentBusType = busType || get().selectedBusType;
     set({ isLoading: true });
     try {
-      // Fetch all vehicle data from the database using the API
-      const response = await fetch("/api/getVehicleData");
+      const response = await fetch(
+        `/api/getVehicleData?busType=${currentBusType}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
       const result = await response.json();
 
       if (result.success && result.data) {
-        // Process the data to ensure proper types
-        const vehicles = result.data.map((vehicle: VehiclePosition) => ({
-          ...vehicle,
-          // Convert string 'true'/'false' to boolean if necessary
-          isActive:
-            typeof vehicle.isActive === "string"
-              ? vehicle.isActive === "true"
-              : Boolean(vehicle.isActive),
-        }));
-
-        // Set the vehicles in the store
-        set({
-          vehicles: vehicles,
-          isLoading: false,
-        });
+        // Set vehicles from DB
+        set({ vehicles: result.data });
+        console.log(`Loaded ${result.data.length} vehicles from database`);
       } else {
         console.error("Failed to load vehicles from database:", result.error);
-        set({ isLoading: false });
       }
     } catch (error) {
       console.error("Error loading vehicles from database:", error);
+    } finally {
       set({ isLoading: false });
     }
   },
