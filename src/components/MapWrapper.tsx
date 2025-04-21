@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense, useEffect, useCallback, useMemo } from "react";
+import { useState, Suspense, useEffect, useMemo } from "react";
 import { useVehicleStore } from "@/store/vehicleStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseStopTimes } from "@/lib/routeUtil";
@@ -22,7 +22,6 @@ export default function MapWrapper() {
     (state) => state.selectedRoute || "all"
   );
   const vehicles = useVehicleStore((state) => state.vehicles);
-  const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
   const [stopsData, setStopsData] = useState<StopData[]>([]);
   // Use a different name than 'Map' for the Map constructor
   const [tripToStopsMap, setTripToStopsMap] = useState<
@@ -47,10 +46,8 @@ export default function MapWrapper() {
         const stopLines = data
           .split("\n")
           .filter((line) => line.trim().length > 0);
-        // Not using the headers variable since it's not needed
-        const headerLine = stopLines[0].split(",");
 
-        // Parse stops data
+        // Skip the header line without storing it
         const parsedStops = stopLines.slice(1).map((line) => {
           const values = line.split(",");
           return {
