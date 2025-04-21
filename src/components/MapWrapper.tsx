@@ -5,13 +5,25 @@ import { useVehicleStore } from "@/store/vehicleStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseStopTimes } from "@/lib/routeUtil";
 
+// Define proper types for stops data
+interface StopData {
+  stop_id: string;
+  stop_code: string;
+  stop_name: string;
+  stop_lat: number;
+  stop_lon: number;
+  sequence?: number;
+  isClonedAsFirst?: boolean;
+  isDuplicate?: boolean;
+}
+
 export default function MapWrapper() {
   const selectedRoute = useVehicleStore(
     (state) => state.selectedRoute || "all"
   );
   const vehicles = useVehicleStore((state) => state.vehicles);
   const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
-  const [stopsData, setStopsData] = useState<any[]>([]);
+  const [stopsData, setStopsData] = useState<StopData[]>([]);
   // Use a different name than 'Map' for the Map constructor
   const [tripToStopsMap, setTripToStopsMap] = useState<
     globalThis.Map<string, Array<{ stopId: string; sequence: number }>>
@@ -26,14 +38,6 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Debounced route selection handling
-  const handleRouteChange = useCallback(
-    (route: string) => {
-      setSelectedRoute(route);
-    },
-    [setSelectedRoute]
-  );
-
   // Effect to fetch stops data when component mounts (not when route changes)
   useEffect(() => {
     setLoadingStops(true);
@@ -43,7 +47,8 @@ export default function MapWrapper() {
         const stopLines = data
           .split("\n")
           .filter((line) => line.trim().length > 0);
-        const headers = stopLines[0].split(",");
+        // Not using the headers variable since it's not needed
+        const headerLine = stopLines[0].split(",");
 
         // Parse stops data
         const parsedStops = stopLines.slice(1).map((line) => {
@@ -245,8 +250,7 @@ export default function MapWrapper() {
                   </p>
                   <div className="space-y-1 max-h-60 overflow-y-auto">
                     {displayStops.map((stop, index) => {
-                      const isFirst = index === 0;
-                      const isLast = index === displayStops.length - 1;
+                      // Removed unused variables isFirst and isLast
                       const isOriginalFirst = index === 1; // Second item is the actual first stop of original data
                       const isOriginalLast = index === displayStops.length - 1; // Last item remains the last stop
                       const isClonedLastStop = stop.isClonedAsFirst;
