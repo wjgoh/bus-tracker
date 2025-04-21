@@ -27,7 +27,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
 import TrackButton from "@/components/TrackButton";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Command,

@@ -1,9 +1,21 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense, useEffect, useCallback, useMemo } from "react";
+import { useState, Suspense, useEffect, useMemo } from "react";
 import { useVehicleStore } from "@/store/vehicleStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseStopTimes } from "@/lib/routeUtil";
+
+// Define a proper type for the stop data
+interface StopData {
+  stop_id: string;
+  stop_code: string;
+  stop_name: string;
+  stop_lat: number;
+  stop_lon: number;
+  sequence?: number;
+  isTerminalEnd?: boolean;
+  isDuplicate?: boolean;
+}
 
 export default function MapWrapper() {
   const selectedRoute = useVehicleStore(
@@ -11,7 +23,7 @@ export default function MapWrapper() {
   );
   const vehicles = useVehicleStore((state) => state.vehicles);
   const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
-  const [stopsData, setStopsData] = useState<any[]>([]);
+  const [stopsData, setStopsData] = useState<StopData[]>([]);
   // Use a different name than 'Map' for the Map constructor
   const [tripToStopsMap, setTripToStopsMap] = useState<
     globalThis.Map<string, Array<{ stopId: string; sequence: number }>>
@@ -26,14 +38,6 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Debounced route selection handling
-  const handleRouteChange = useCallback(
-    (route: string) => {
-      setSelectedRoute(route);
-    },
-    [setSelectedRoute]
-  );
-
   // Effect to fetch stops data when component mounts (not when route changes)
   useEffect(() => {
     setLoadingStops(true);
@@ -43,7 +47,8 @@ export default function MapWrapper() {
         const stopLines = data
           .split("\n")
           .filter((line) => line.trim().length > 0);
-        const headers = stopLines[0].split(",");
+        // Parse headers but we don't need to use it
+        const _headers = stopLines[0].split(",");
 
         // Parse stops data
         const parsedStops = stopLines.slice(1).map((line) => {
@@ -188,20 +193,6 @@ export default function MapWrapper() {
     return firstStop.stop_id === lastStop.stop_id;
   }, [filteredStopsWithSequence]);
 
-  // For circular routes, prepare the display data by adding the first stop again at the end
-  const displayStops = useMemo(() => {
-    if (!isCircularRoute || filteredStopsWithSequence.length === 0) {
-      return filteredStopsWithSequence;
-    }
-
-    // For circular routes, duplicate the first stop and add it to the end with a special flag
-    const firstStop = filteredStopsWithSequence[0];
-    return [
-      ...filteredStopsWithSequence,
-      { ...firstStop, isTerminalEnd: true, isDuplicate: true },
-    ];
-  }, [filteredStopsWithSequence, isCircularRoute]);
-
   return (
     <div className="relative w-full h-full">
       <div className="w-full h-full relative z-0">
@@ -240,8 +231,8 @@ export default function MapWrapper() {
                       const isFirst = index === 0;
                       const isLast =
                         index === filteredStopsWithSequence.length - 1;
-                      const isFirstAndLast = isFirst && isLast;
-
+                      // Remove unused variable
+                      
                       // Don't filter out the last stop anymore - even for circular routes
                       return (
                         <div
