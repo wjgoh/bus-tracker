@@ -22,7 +22,6 @@ export default function MapWrapper() {
     (state) => state.selectedRoute || "all"
   );
   const vehicles = useVehicleStore((state) => state.vehicles);
-  const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
   const [stopsData, setStopsData] = useState<StopData[]>([]);
   // Use a different name than 'Map' for the Map constructor
   const [tripToStopsMap, setTripToStopsMap] = useState<
@@ -47,8 +46,8 @@ export default function MapWrapper() {
         const stopLines = data
           .split("\n")
           .filter((line) => line.trim().length > 0);
-        // Parse headers but we don't need to use it
-        const _headers = stopLines[0].split(",");
+        // We can just skip storing the headers completely since we don't use them
+        stopLines[0].split(","); // Parse header row but don't store it
 
         // Parse stops data
         const parsedStops = stopLines.slice(1).map((line) => {
@@ -232,7 +231,7 @@ export default function MapWrapper() {
                       const isLast =
                         index === filteredStopsWithSequence.length - 1;
                       // Remove unused variable
-                      
+
                       // Don't filter out the last stop anymore - even for circular routes
                       return (
                         <div
