@@ -154,12 +154,12 @@ export function BusTrackerSidebar() {
                   className="w-full justify-between text-sm h-9"
                   onClick={() => setOpenRoutes(!openRoutes)}
                 >
-                  <div className="flex items-center gap-2 overflow-hidden">
+                  <div className="flex items-center gap-2 overflow-hidden max-w-full">
                     {selectedRoute === "all" ? (
                       "All Buses"
                     ) : (
                       <>
-                        <span className="truncate">
+                        <span className="truncate max-w-[7rem]">
                           {routeOptions.find(
                             (route) => route.value === selectedRoute
                           )?.label || "Select route..."}
@@ -188,46 +188,51 @@ export function BusTrackerSidebar() {
                 </Button>
 
                 {openRoutes && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-md">
-                    <Command className="rounded-lg border">
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-popover rounded-md shadow-md">
+                    <Command className="rounded-lg border w-full overflow-hidden">
                       <CommandInput
                         placeholder="Find route..."
                         value={searchQuery}
                         onValueChange={setSearchQuery}
+                        className="w-full"
                       />
-                      <CommandList className="max-h-60 overflow-auto">
+                      <CommandList className="max-h-48 overflow-auto">
                         <CommandEmpty>No routes found.</CommandEmpty>
-                        <CommandGroup>
+                        <CommandGroup className="overflow-hidden">
                           {filteredRoutes.map((route) => (
                             <CommandItem
                               key={route.value}
                               value={route.value}
                               onSelect={handleRouteSelect}
-                              className="cursor-pointer"
+                              className="cursor-pointer flex items-center w-full overflow-hidden"
                             >
                               <CheckIcon
                                 className={cn(
-                                  "mr-2 h-4 w-4",
+                                  "mr-2 h-4 w-4 shrink-0",
                                   selectedRoute === route.value
                                     ? "opacity-100"
                                     : "opacity-0"
                                 )}
                               />
-                              {route.label}
-                              {route.value !== "all" && (
-                                <Badge
-                                  className="ml-2"
-                                  variant={
-                                    route.busType === "mrtfeeder"
-                                      ? "success"
-                                      : "info"
-                                  }
-                                >
-                                  {route.busType === "mrtfeeder"
-                                    ? "MRT Feeder"
-                                    : "Rapid Bus KL"}
-                                </Badge>
-                              )}
+                              <div className="flex justify-between items-center w-full overflow-hidden">
+                                <span className="truncate text-sm">
+                                  {route.label}
+                                </span>
+                                {route.value !== "all" && (
+                                  <Badge
+                                    className="ml-1 px-1 text-xs whitespace-nowrap"
+                                    variant={
+                                      route.busType === "mrtfeeder"
+                                        ? "success"
+                                        : "info"
+                                    }
+                                  >
+                                    {route.busType === "mrtfeeder"
+                                      ? "MRT Feeder"
+                                      : "Rapid Bus KL"}
+                                  </Badge>
+                                )}
+                              </div>
                             </CommandItem>
                           ))}
                         </CommandGroup>
