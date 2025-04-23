@@ -29,7 +29,7 @@ type VehicleStore = {
   loadVehiclesFromDatabase: () => Promise<void>;
 };
 
-export const useVehicleStore = create<VehicleStore>((set, get) => ({
+export const useVehicleStore = create<VehicleStore>((set) => ({
   vehicles: [],
   selectedRoute: "all",
   selectedBusType: undefined,
