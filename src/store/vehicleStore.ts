@@ -13,25 +13,26 @@ export type VehiclePosition = {
   status: string;
   isActive: boolean; // Flag to track if the bus is currently active in the API
   lastSeen: string; // Timestamp when the bus was last seen
+  busType?: string; // Added to track which bus type this vehicle belongs to
 };
 
 type VehicleStore = {
   vehicles: VehiclePosition[];
   selectedRoute: string;
-  selectedBusType: BusType;
+  selectedBusType?: BusType;
   isLoading: boolean;
   setVehicles: (vehicles: VehiclePosition[]) => void;
   setSelectedRoute: (route: string) => void;
-  setSelectedBusType: (busType: BusType) => void;
+  setSelectedBusType: (busType?: BusType) => void;
   updateVehicles: (vehicles: VehiclePosition[]) => void;
   markInactiveVehicles: (activeVehicleIds: string[]) => void;
-  loadVehiclesFromDatabase: (busType?: BusType) => Promise<void>;
+  loadVehiclesFromDatabase: () => Promise<void>;
 };
 
 export const useVehicleStore = create<VehicleStore>((set, get) => ({
   vehicles: [],
   selectedRoute: "all",
-  selectedBusType: "mrtfeeder",
+  selectedBusType: undefined,
   isLoading: false,
   setVehicles: (vehicles) => {
     // When setting vehicles for the first time, mark them all as active
@@ -43,12 +44,7 @@ export const useVehicleStore = create<VehicleStore>((set, get) => ({
     set({ vehicles: enhancedVehicles });
   },
   setSelectedRoute: (route) => set({ selectedRoute: route }),
-  setSelectedBusType: (busType) =>
-    set({
-      selectedBusType: busType,
-      // Reset route selection when changing bus type
-      selectedRoute: "all",
-    }),
+  setSelectedBusType: (busType) => set({ selectedBusType: busType }),
   updateVehicles: (vehicles) =>
     set((state) => {
       const existingVehicles = new Map(
@@ -90,26 +86,53 @@ export const useVehicleStore = create<VehicleStore>((set, get) => ({
 
       return { vehicles: updatedVehicles };
     }),
-  loadVehiclesFromDatabase: async (busType) => {
-    const currentBusType = busType || get().selectedBusType;
+  loadVehiclesFromDatabase: async () => {
     set({ isLoading: true });
-    try {
-      const response = await fetch(
-        `/api/getVehicleData?busType=${currentBusType}`
-      );
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
+    try {
+      // Fetch both types of buses always
+      const mrtFeederResponse = await fetch(
+        `/api/getVehicleData?busType=mrtfeeder`
+      );
+      // Fetch KL buses
+      const klResponse = await fetch(`/api/getVehicleData?busType=kl`);
+
+      if (!mrtFeederResponse.ok || !klResponse.ok) {
+        throw new Error(`API request failed`);
       }
 
-      const result = await response.json();
+      const mrtFeederResult = await mrtFeederResponse.json();
+      const klResult = await klResponse.json();
 
-      if (result.success && result.data) {
+      if (
+        mrtFeederResult.success &&
+        klResult.success &&
+        mrtFeederResult.data &&
+        klResult.data
+      ) {
+        // Add busType property to each vehicle for identification
+        const mrtFeederVehicles = mrtFeederResult.data.map(
+          (v: VehiclePosition) => ({
+            ...v,
+            busType: "mrtfeeder",
+          })
+        );
+
+        const klVehicles = klResult.data.map((v: VehiclePosition) => ({
+          ...v,
+          busType: "kl",
+        }));
+
+        // Combine both sets of vehicles
+        const combinedVehicles = [...mrtFeederVehicles, ...klVehicles];
+
         // Set vehicles from DB
-        set({ vehicles: result.data });
-        console.log(`Loaded ${result.data.length} vehicles from database`);
+        set({ vehicles: combinedVehicles });
+        console.log(
+          `Loaded ${combinedVehicles.length} vehicles from database (${mrtFeederVehicles.length} MRT feeder, ${klVehicles.length} KL)`
+        );
       } else {
-        console.error("Failed to load vehicles from database:", result.error);
+        console.error("Failed to load vehicles from database");
       }
     } catch (error) {
       console.error("Error loading vehicles from database:", error);

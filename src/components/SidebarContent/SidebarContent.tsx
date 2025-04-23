@@ -38,50 +38,55 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useVehicleStore } from "@/store/vehicleStore";
-import { BusType } from "@/lib/db";
 
-// Define bus type options with more readable labels
-const BUS_TYPE_OPTIONS = [
-  { value: "mrtfeeder", label: "MRT Feeder Buses" },
-  { value: "kl", label: "KL Rapid Buses" },
-];
+// Define the type for route options
+type RouteOption = {
+  value: string;
+  label: string;
+  busType?: string;
+};
 
 export function BusTrackerSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openRoutes, setOpenRoutes] = useState(false);
-  const [openBusTypes, setOpenBusTypes] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
   // Access the vehicle store
   const selectedRoute =
     useVehicleStore((state) => state.selectedRoute) || "all";
-  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
-  const setSelectedBusType = useVehicleStore(
-    (state) => state.setSelectedBusType
-  );
   const loadVehiclesFromDatabase = useVehicleStore(
     (state) => state.loadVehiclesFromDatabase
   );
+  const setSelectedBusType = useVehicleStore(
+    (state) => state.setSelectedBusType
+  );
 
-  // Effect to reload vehicles when bus type changes
+  // Effect to load all vehicles on initial render
   useEffect(() => {
-    loadVehiclesFromDatabase(selectedBusType);
-  }, [selectedBusType, loadVehiclesFromDatabase]);
+    loadVehiclesFromDatabase();
+  }, [loadVehiclesFromDatabase]);
 
   // Get unique route options and format them for the ComboBox
-  const routeOptions = [
+  const routeOptions: RouteOption[] = [
     {
       value: "all",
-      label: `All ${
-        selectedBusType === "kl" ? "KL Rapid" : "MRT Feeder"
-      } Buses`,
+      label: "All Buses",
     },
     ...Array.from(new Set(vehicles.map((v) => v.routeId)))
       .filter(Boolean)
       .sort()
-      .map((route) => ({ value: route, label: route })),
+      .map((route) => {
+        // Find a representative vehicle for this route to get its bus type
+        const routeVehicle = vehicles.find((v) => v.routeId === route);
+        return {
+          value: route,
+          label: route,
+          busType: routeVehicle?.busType || "unknown",
+        };
+      }),
   ];
 
   // Filter routes based on search query
@@ -93,14 +98,21 @@ export function BusTrackerSidebar() {
   const handleRouteSelect = (route: string) => {
     console.log(`Selected route: ${route}`); // Debug logging
     setSelectedRoute(route);
-    setOpenRoutes(false);
-  };
 
-  // Handler for bus type selection
-  const handleBusTypeSelect = (busType: BusType) => {
-    console.log(`Selected bus type: ${busType}`); // Debug logging
-    setSelectedBusType(busType);
-    setOpenBusTypes(false);
+    // Set the corresponding bus type for the selected route
+    if (route === "all") {
+      // When "All Buses" is selected, don't set a specific bus type
+      setSelectedBusType(undefined);
+    } else {
+      // Find the bus type for the selected route
+      const routeOption = routeOptions.find((r) => r.value === route);
+      if (routeOption?.busType) {
+        setSelectedBusType(routeOption.busType as "mrtfeeder" | "kl");
+        console.log(`Set bus type to: ${routeOption.busType}`);
+      }
+    }
+
+    setOpenRoutes(false);
   };
 
   return (
@@ -116,59 +128,6 @@ export function BusTrackerSidebar() {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Bus Type</SidebarGroupLabel>
-            <SidebarGroupContent>
-              {/* Bus Type Selector */}
-              <div className="px-3 mb-3 relative">
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openBusTypes}
-                  className="w-full justify-between text-sm h-9"
-                  onClick={() => setOpenBusTypes(!openBusTypes)}
-                >
-                  {BUS_TYPE_OPTIONS.find(
-                    (option) => option.value === selectedBusType
-                  )?.label || "Select bus type..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-
-                {openBusTypes && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-md">
-                    <Command className="rounded-lg border">
-                      <CommandList className="max-h-60 overflow-auto">
-                        <CommandEmpty>No options available.</CommandEmpty>
-                        <CommandGroup>
-                          {BUS_TYPE_OPTIONS.map((option) => (
-                            <CommandItem
-                              key={option.value}
-                              value={option.value}
-                              onSelect={() =>
-                                handleBusTypeSelect(option.value as BusType)
-                              }
-                              className="cursor-pointer"
-                            >
-                              <CheckIcon
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedBusType === option.value
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              {option.label}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
           <SidebarGroup>
             <SidebarGroupLabel>Route Selection</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -195,13 +154,36 @@ export function BusTrackerSidebar() {
                   className="w-full justify-between text-sm h-9"
                   onClick={() => setOpenRoutes(!openRoutes)}
                 >
-                  {selectedRoute === "all"
-                    ? `All ${
-                        selectedBusType === "kl" ? "KL Rapid" : "MRT Feeder"
-                      } Buses`
-                    : routeOptions.find(
-                        (route) => route.value === selectedRoute
-                      )?.label || "Select route..."}
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {selectedRoute === "all" ? (
+                      "All Buses"
+                    ) : (
+                      <>
+                        <span className="truncate">
+                          {routeOptions.find(
+                            (route) => route.value === selectedRoute
+                          )?.label || "Select route..."}
+                        </span>
+                        {selectedRoute !== "all" && (
+                          <Badge
+                            variant={
+                              routeOptions.find(
+                                (route) => route.value === selectedRoute
+                              )?.busType === "mrtfeeder"
+                                ? "success"
+                                : "info"
+                            }
+                          >
+                            {routeOptions.find(
+                              (route) => route.value === selectedRoute
+                            )?.busType === "mrtfeeder"
+                              ? "MRT Feeder"
+                              : "Rapid Bus KL"}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </div>
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
 
@@ -232,6 +214,20 @@ export function BusTrackerSidebar() {
                                 )}
                               />
                               {route.label}
+                              {route.value !== "all" && (
+                                <Badge
+                                  className="ml-2"
+                                  variant={
+                                    route.busType === "mrtfeeder"
+                                      ? "success"
+                                      : "info"
+                                  }
+                                >
+                                  {route.busType === "mrtfeeder"
+                                    ? "MRT Feeder"
+                                    : "Rapid Bus KL"}
+                                </Badge>
+                              )}
                             </CommandItem>
                           ))}
                         </CommandGroup>
