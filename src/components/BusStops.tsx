@@ -231,10 +231,11 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
           center={[stop.stop_lat, stop.stop_lon]}
           radius={5}
           pathOptions={{
-            fillColor: activeStopId === stop.stop_id 
-              ? "#3498db" // Blue color for selected stop
-              : selectedBusType === "kl" 
-                ? "#e74c3c"  // Red for Rapid Bus KL stops
+            fillColor:
+              activeStopId === stop.stop_id
+                ? "#3498db" // Blue color for selected stop
+                : selectedBusType === "kl"
+                ? "#e74c3c" // Red for Rapid Bus KL stops
                 : "#ff7800", // Orange for MRT Feeder stops
             fillOpacity: activeStopId === stop.stop_id ? 1.0 : 0.8,
             weight: activeStopId === stop.stop_id ? 2 : 1,
