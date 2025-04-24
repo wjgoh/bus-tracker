@@ -1,9 +1,9 @@
 import { CircleMarker, Popup, useMap } from "react-leaflet";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react"; // Added useCallback
 import { parseStopTimes } from "@/lib/routeUtil";
 import { useVehicleStore } from "@/store/vehicleStore";
 import React from "react";
-import { LeafletEventHandlerFnMap } from "leaflet";
+import L from "leaflet"; // Added L import
 
 interface Stop {
   stop_id: string;
@@ -45,13 +45,13 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [activeStopId, setActiveStopId] = useState<string | null>(null);
 
   // Store references to all marker popups with proper typing
-  const markerRefs = useMemo(() => new Map<string, any>(), []);
+  const markerRefs = useMemo(() => new Map<string, L.CircleMarker>(), []);
 
   // Determine the bus type to use for API calls
   const busTypeParam = selectedBusType || "mrtfeeder";
 
-  // Function to handle stop selection from the card
-  const handleStopClick = (stop: Stop) => {
+  // Function to handle stop selection from the card, wrapped in useCallback
+  const handleStopClick = useCallback((stop: Stop) => {
     // Validate coordinates before trying to fly to them
     if (isNaN(stop.stop_lat) || isNaN(stop.stop_lon)) {
       console.error("Invalid coordinates for stop:", stop);
@@ -72,7 +72,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
 
     // Simply center on the stop and let the user click it
     // This is more reliable than trying to programmatically open the popup
-  };
+  }, [map]); // Dependencies for useCallback
 
   // Listen for focus-stop events from MapWrapper
   useEffect(() => {

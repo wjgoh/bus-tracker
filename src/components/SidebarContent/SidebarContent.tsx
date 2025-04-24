@@ -40,7 +40,6 @@ type RouteOption = {
 
 export function BusTrackerSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [openRoutes, setOpenRoutes] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
   // Access the vehicle store
@@ -101,8 +100,6 @@ export function BusTrackerSidebar() {
         console.log(`Set bus type to: ${routeOption.busType}`);
       }
     }
-
-    setOpenRoutes(false);
   };
 
   return (
