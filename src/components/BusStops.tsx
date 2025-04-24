@@ -2,8 +2,8 @@ import { CircleMarker, Popup, useMap } from "react-leaflet";
 import { useState, useEffect, useMemo } from "react";
 import { parseStopTimes } from "@/lib/routeUtil";
 import { useVehicleStore } from "@/store/vehicleStore";
-import React from 'react';
-import { LeafletEventHandlerFnMap } from 'leaflet';
+import React from "react";
+import { LeafletEventHandlerFnMap } from "leaflet";
 
 interface Stop {
   stop_id: string;
@@ -96,10 +96,16 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       }
     };
 
-    mapElement.addEventListener("focus-stop", handleFocusStopEvent as EventListener);
+    mapElement.addEventListener(
+      "focus-stop",
+      handleFocusStopEvent as EventListener
+    );
 
     return () => {
-      mapElement.removeEventListener("focus-stop", handleFocusStopEvent as EventListener);
+      mapElement.removeEventListener(
+        "focus-stop",
+        handleFocusStopEvent as EventListener
+      );
     };
   }, [map, stops, handleStopClick]);
 
