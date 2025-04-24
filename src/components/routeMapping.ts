@@ -124,12 +124,40 @@ for (const [vehicleId, gtfsId] of Object.entries(vehicleToGtfsTripMap)) {
 export function getAllPossibleTripIds(tripId: string): string[] {
   const variants = [tripId];
 
-  // Add any mapped variant
+  // Add any mapped variant from our explicit mapping
   const mappedId = vehicleToGtfsTripMap[tripId];
   if (mappedId && !variants.includes(mappedId)) {
     variants.push(mappedId);
   }
 
+  // Handle KL style IDs like "weekday_P0010_P001002_6"
+  if (tripId.includes("_")) {
+    const parts = tripId.split("_");
+    // Try just the trip numeric part
+    if (parts.length >= 3) {
+      // Add the third part as a standalone ID
+      variants.push(parts[2]);
+      // Also try without any prefix or leading zeros
+      variants.push(parts[2].replace(/^[A-Za-z]+0*/, ""));
+    }
+    // Try with the route ID from the second part if available
+    if (parts.length >= 2) {
+      variants.push(parts[1]);
+      variants.push(parts[1].replace(/^[A-Za-z]+0*/, ""));
+    }
+  }
+
+  // Handle feeder IDs like "250414010049S10"
+  else if (/^\d+[A-Za-z]\d+$/.test(tripId)) {
+    // Extract just the part after any letters
+    const matches = tripId.match(/^(\d+)([A-Za-z])(\d+)$/);
+    if (matches && matches.length >= 4) {
+      variants.push(matches[3]); // Add just the number after the letter
+      variants.push(matches[1]); // Add just the number before the letter
+    }
+  }
+
+  console.log(`Trip ID variants for ${tripId}:`, variants);
   return variants;
 }
 

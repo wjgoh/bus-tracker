@@ -1,11 +1,15 @@
 // src/app/api/getVehicleData/route.ts
 import { NextResponse } from "next/server";
-import { getAllVehicleData } from "@/lib/db";
+import { getAllVehicleData, BusType } from "@/lib/db";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Get bus type from query parameters
+    const url = new URL(request.url);
+    const busType = (url.searchParams.get("busType") as BusType) || "mrtfeeder";
+
     // Get all vehicle data from the database
-    const result = await getAllVehicleData();
+    const result = await getAllVehicleData(busType);
 
     if (result.success) {
       return NextResponse.json({

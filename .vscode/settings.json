@@ -1,0 +1,7 @@
+{
+  "github.copilot.enable": {
+    "*": true,
+    "src/rapid_bus_mrtfeeder/*": false,
+    "src/rapid_bus_kl/*": false
+  }
+}

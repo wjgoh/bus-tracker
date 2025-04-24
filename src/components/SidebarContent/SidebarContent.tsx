@@ -21,42 +21,61 @@ import {
   SettingsIcon,
   SearchIcon,
   CheckIcon,
-  ChevronsUpDown,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
 import TrackButton from "@/components/TrackButton";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useVehicleStore } from "@/store/vehicleStore";
+
+// Define the type for route options
+type RouteOption = {
+  value: string;
+  label: string;
+  busType?: string;
+};
 
 export function BusTrackerSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [openRoutes, setOpenRoutes] = useState(false);
   const vehicles = useVehicleStore((state) => state.vehicles);
 
   // Access the vehicle store
   const selectedRoute =
     useVehicleStore((state) => state.selectedRoute) || "all";
   const setSelectedRoute = useVehicleStore((state) => state.setSelectedRoute);
+  const loadVehiclesFromDatabase = useVehicleStore(
+    (state) => state.loadVehiclesFromDatabase
+  );
+  const setSelectedBusType = useVehicleStore(
+    (state) => state.setSelectedBusType
+  );
+
+  // Effect to load all vehicles on initial render
+  useEffect(() => {
+    loadVehiclesFromDatabase();
+  }, [loadVehiclesFromDatabase]);
 
   // Get unique route options and format them for the ComboBox
-  const routeOptions = [
-    { value: "all", label: "All Mrt Feeder Bus" },
+  const routeOptions: RouteOption[] = [
+    {
+      value: "all",
+      label: "All Buses",
+    },
     ...Array.from(new Set(vehicles.map((v) => v.routeId)))
       .filter(Boolean)
       .sort()
-      .map((route) => ({ value: route, label: route })),
+      .map((route) => {
+        // Find a representative vehicle for this route to get its bus type
+        const routeVehicle = vehicles.find((v) => v.routeId === route);
+        return {
+          value: route,
+          label: route,
+          busType: routeVehicle?.busType || "unknown",
+        };
+      }),
   ];
 
   // Filter routes based on search query
@@ -68,7 +87,19 @@ export function BusTrackerSidebar() {
   const handleRouteSelect = (route: string) => {
     console.log(`Selected route: ${route}`); // Debug logging
     setSelectedRoute(route);
-    setOpenRoutes(false);
+
+    // Set the corresponding bus type for the selected route
+    if (route === "all") {
+      // When "All Buses" is selected, don't set a specific bus type
+      setSelectedBusType(undefined);
+    } else {
+      // Find the bus type for the selected route
+      const routeOption = routeOptions.find((r) => r.value === route);
+      if (routeOption?.busType) {
+        setSelectedBusType(routeOption.busType as "mrtfeeder" | "kl");
+        console.log(`Set bus type to: ${routeOption.busType}`);
+      }
+    }
   };
 
   return (
@@ -87,83 +118,99 @@ export function BusTrackerSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel>Route Selection</SidebarGroupLabel>
             <SidebarGroupContent>
-              {/* Search Bar */}
+              {/* Search Bar for Routes - Redesigned */}
               <div className="px-3 mb-3">
-                <div className="relative">
-                  <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search routes..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 py-2 h-9 text-sm"
-                  />
+                <div className="bg-background/10 rounded-lg border border-border/50 overflow-hidden">
+                  {/* Search Input */}
+                  <div className="flex items-center px-3 py-2 border-b border-border/30">
+                    <SearchIcon className="h-4 w-4 text-muted-foreground mr-2" />
+                    <Input
+                      type="text"
+                      placeholder="Search routes..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-7 p-0 placeholder:text-muted-foreground"
+                    />
+                  </div>
+
+                  {/* Route List - Only show when there's search text */}
+                  {searchQuery.trim() !== "" && (
+                    <div className="max-h-52 overflow-y-auto py-1">
+                      {filteredRoutes.length === 0 ? (
+                        <div className="text-center py-2 text-sm text-muted-foreground">
+                          No routes found
+                        </div>
+                      ) : (
+                        filteredRoutes.map((route) => (
+                          <div
+                            key={route.value}
+                            onClick={() => handleRouteSelect(route.value)}
+                            className={cn(
+                              "flex items-center justify-between px-3 py-1.5 cursor-pointer hover:bg-accent/50",
+                              selectedRoute === route.value && "bg-accent/30"
+                            )}
+                          >
+                            <div className="flex items-center">
+                              {selectedRoute === route.value && (
+                                <CheckIcon className="h-4 w-4 mr-2 text-primary" />
+                              )}
+                              <span
+                                className={cn(
+                                  "font-medium text-sm",
+                                  selectedRoute !== route.value && "ml-6" // Keep alignment consistent
+                                )}
+                              >
+                                {route.label}
+                              </span>
+                            </div>
+
+                            {route.value !== "all" && (
+                              <Badge
+                                className="ml-2 px-2 py-0.5 text-xs"
+                                variant={
+                                  route.busType === "mrtfeeder"
+                                    ? "success"
+                                    : "info"
+                                }
+                              >
+                                {route.busType === "mrtfeeder"
+                                  ? "MRT Feeder"
+                                  : "Rapid Bus KL"}
+                              </Badge>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Route Selector */}
-              <div className="px-3 mb-3 relative">
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openRoutes}
-                  className="w-full justify-between text-sm h-9"
-                  onClick={() => setOpenRoutes(!openRoutes)}
-                >
-                  {selectedRoute === "all"
-                    ? "All Mrt Feeder Bus"
-                    : routeOptions.find(
-                        (route) => route.value === selectedRoute
-                      )?.label || "Select route..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-
-                {openRoutes && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover rounded-md shadow-md">
-                    <Command className="rounded-lg border">
-                      <CommandInput
-                        placeholder="Find route..."
-                        value={searchQuery}
-                        onValueChange={setSearchQuery}
-                      />
-                      <CommandList className="max-h-60 overflow-auto">
-                        <CommandEmpty>No routes found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredRoutes.map((route) => (
-                            <CommandItem
-                              key={route.value}
-                              value={route.value}
-                              onSelect={handleRouteSelect}
-                              className="cursor-pointer"
-                            >
-                              <CheckIcon
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedRoute === route.value
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              {route.label}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
-              </div>
-
-              {/* Current Selection */}
+              {/* Currently Selected Route */}
               {selectedRoute !== "all" && (
                 <div className="px-3 mb-3">
-                  <p className="text-sm text-muted-foreground">
-                    Currently showing:
-                    <span className="font-semibold ml-1 text-foreground">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">
+                        Currently showing:
+                      </span>
+                      <span className="font-medium">{selectedRoute}</span>
+                    </div>
+                    <Badge
+                      variant={
+                        routeOptions.find((r) => r.value === selectedRoute)
+                          ?.busType === "mrtfeeder"
+                          ? "success"
+                          : "info"
+                      }
+                      className="px-2 py-0.5"
+                    >
                       {routeOptions.find((r) => r.value === selectedRoute)
-                        ?.label || selectedRoute}
-                    </span>
-                  </p>
+                        ?.busType === "mrtfeeder"
+                        ? "MRT Feeder"
+                        : "Rapid Bus KL"}
+                    </Badge>
+                  </div>
                 </div>
               )}
             </SidebarGroupContent>

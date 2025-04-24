@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { BusType } from "@/lib/db";
 
 export type VehiclePosition = {
   tripId: string;
@@ -12,14 +13,17 @@ export type VehiclePosition = {
   status: string;
   isActive: boolean; // Flag to track if the bus is currently active in the API
   lastSeen: string; // Timestamp when the bus was last seen
+  busType?: string; // Added to track which bus type this vehicle belongs to
 };
 
 type VehicleStore = {
   vehicles: VehiclePosition[];
   selectedRoute: string;
+  selectedBusType?: BusType;
   isLoading: boolean;
   setVehicles: (vehicles: VehiclePosition[]) => void;
   setSelectedRoute: (route: string) => void;
+  setSelectedBusType: (busType?: BusType) => void;
   updateVehicles: (vehicles: VehiclePosition[]) => void;
   markInactiveVehicles: (activeVehicleIds: string[]) => void;
   loadVehiclesFromDatabase: () => Promise<void>;
@@ -28,6 +32,7 @@ type VehicleStore = {
 export const useVehicleStore = create<VehicleStore>((set) => ({
   vehicles: [],
   selectedRoute: "all",
+  selectedBusType: undefined,
   isLoading: false,
   setVehicles: (vehicles) => {
     // When setting vehicles for the first time, mark them all as active
@@ -39,6 +44,7 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
     set({ vehicles: enhancedVehicles });
   },
   setSelectedRoute: (route) => set({ selectedRoute: route }),
+  setSelectedBusType: (busType) => set({ selectedBusType: busType }),
   updateVehicles: (vehicles) =>
     set((state) => {
       const existingVehicles = new Map(
@@ -82,33 +88,55 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
     }),
   loadVehiclesFromDatabase: async () => {
     set({ isLoading: true });
-    try {
-      // Fetch all vehicle data from the database using the API
-      const response = await fetch("/api/getVehicleData");
-      const result = await response.json();
 
-      if (result.success && result.data) {
-        // Process the data to ensure proper types
-        const vehicles = result.data.map((vehicle: VehiclePosition) => ({
-          ...vehicle,
-          // Convert string 'true'/'false' to boolean if necessary
-          isActive:
-            typeof vehicle.isActive === "string"
-              ? vehicle.isActive === "true"
-              : Boolean(vehicle.isActive),
+    try {
+      // Fetch both types of buses always
+      const mrtFeederResponse = await fetch(
+        `/api/getVehicleData?busType=mrtfeeder`
+      );
+      // Fetch KL buses
+      const klResponse = await fetch(`/api/getVehicleData?busType=kl`);
+
+      if (!mrtFeederResponse.ok || !klResponse.ok) {
+        throw new Error(`API request failed`);
+      }
+
+      const mrtFeederResult = await mrtFeederResponse.json();
+      const klResult = await klResponse.json();
+
+      if (
+        mrtFeederResult.success &&
+        klResult.success &&
+        mrtFeederResult.data &&
+        klResult.data
+      ) {
+        // Add busType property to each vehicle for identification
+        const mrtFeederVehicles = mrtFeederResult.data.map(
+          (v: VehiclePosition) => ({
+            ...v,
+            busType: "mrtfeeder",
+          })
+        );
+
+        const klVehicles = klResult.data.map((v: VehiclePosition) => ({
+          ...v,
+          busType: "kl",
         }));
 
-        // Set the vehicles in the store
-        set({
-          vehicles: vehicles,
-          isLoading: false,
-        });
+        // Combine both sets of vehicles
+        const combinedVehicles = [...mrtFeederVehicles, ...klVehicles];
+
+        // Set vehicles from DB
+        set({ vehicles: combinedVehicles });
+        console.log(
+          `Loaded ${combinedVehicles.length} vehicles from database (${mrtFeederVehicles.length} MRT feeder, ${klVehicles.length} KL)`
+        );
       } else {
-        console.error("Failed to load vehicles from database:", result.error);
-        set({ isLoading: false });
+        console.error("Failed to load vehicles from database");
       }
     } catch (error) {
       console.error("Error loading vehicles from database:", error);
+    } finally {
       set({ isLoading: false });
     }
   },

@@ -21,6 +21,7 @@ export default function MapWrapper() {
   const selectedRoute = useVehicleStore(
     (state) => state.selectedRoute || "all"
   );
+  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const vehicles = useVehicleStore((state) => state.vehicles);
   const [stopsData, setStopsData] = useState<StopData[]>([]);
   // Use a different name than 'Map' for the Map constructor
@@ -37,15 +38,24 @@ export default function MapWrapper() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // Effect to fetch stops data when component mounts (not when route changes)
+  // Determine the bus type to use for API calls
+  const busTypeParam = selectedBusType || "mrtfeeder";
+
+  // Effect to fetch stops data when component mounts or when bus type changes
   useEffect(() => {
     setLoadingStops(true);
-    fetch("/api/stops")
+    console.log(`Fetching stops data for bus type: ${busTypeParam}...`);
+
+    fetch(`/api/stops?busType=${busTypeParam}`)
       .then((res) => res.text())
       .then((data) => {
         const stopLines = data
           .split("\n")
           .filter((line) => line.trim().length > 0);
+
+        console.log(
+          `Loaded ${stopLines.length - 1} stops for ${busTypeParam} buses`
+        );
 
         // Skip the header line without storing it
         const parsedStops = stopLines.slice(1).map((line) => {
@@ -63,16 +73,23 @@ export default function MapWrapper() {
         setLoadingStops(false);
       })
       .catch((error) => {
-        console.error("Error fetching stops data:", error);
+        console.error(`Error fetching stops data for ${busTypeParam}:`, error);
         setLoadingStops(false);
       });
-  }, []); // Only fetch once when component mounts
+  }, [busTypeParam]); // Refetch when bus type changes
 
-  // Fetch stop_times.txt data only once
+  // Reset the stop times loaded flag when bus type changes
+  useEffect(() => {
+    setIsStopTimesLoaded(false);
+  }, [busTypeParam]);
+
+  // Fetch stop_times.txt data based on selected bus type
   useEffect(() => {
     if (isStopTimesLoaded) return;
 
-    fetch("/api/stop_times")
+    console.log(`Fetching stop_times data for bus type: ${busTypeParam}...`);
+
+    fetch(`/api/stop_times?busType=${busTypeParam}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP error ${response.status}`);
@@ -80,14 +97,20 @@ export default function MapWrapper() {
         return response.text();
       })
       .then((data) => {
+        console.log(
+          `Received ${data.length} bytes of stop_times data for ${busTypeParam}`
+        );
         const parsedData = parseStopTimes(data);
         setTripToStopsMap(parsedData);
         setIsStopTimesLoaded(true);
       })
       .catch((error) => {
-        console.error("Error loading stop_times data:", error);
+        console.error(
+          `Error loading stop_times data for ${busTypeParam}:`,
+          error
+        );
       });
-  }, [isStopTimesLoaded]);
+  }, [isStopTimesLoaded, busTypeParam]);
 
   // Find relevant stops based on selected route
   useEffect(() => {
@@ -121,7 +144,11 @@ export default function MapWrapper() {
     let intervalId: NodeJS.Timeout | null = null;
 
     async function fetchVehicleData() {
-      await loadVehiclesFromDatabase();
+      try {
+        await loadVehiclesFromDatabase();
+      } catch (error) {
+        console.error("Error fetching vehicle data:", error);
+      }
     }
 
     fetchVehicleData(); // initial load
@@ -129,7 +156,7 @@ export default function MapWrapper() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [loadVehiclesFromDatabase]);
+  }, [loadVehiclesFromDatabase, selectedBusType]);
 
   // Memoize the dynamic Map component to prevent unnecessary re-creation
   const MapComponent = useMemo(
@@ -191,13 +218,14 @@ export default function MapWrapper() {
   }, [filteredStopsWithSequence]);
 
   // Prepare the display data by cloning the last stop and adding it as the first stop
+  // but only for MRT feeder buses, not for KL buses
   const displayStops = useMemo(() => {
     if (filteredStopsWithSequence.length === 0) {
       return [];
     }
 
-    // Clone the last stop and add it as the first stop with special flag
-    if (filteredStopsWithSequence.length > 1) {
+    // Only clone the last stop for MRT feeder buses
+    if (filteredStopsWithSequence.length > 1 && busTypeParam === "mrtfeeder") {
       const lastStop =
         filteredStopsWithSequence[filteredStopsWithSequence.length - 1];
       const clonedLastStop = {
@@ -210,7 +238,7 @@ export default function MapWrapper() {
     }
 
     return filteredStopsWithSequence;
-  }, [filteredStopsWithSequence]);
+  }, [filteredStopsWithSequence, busTypeParam]);
 
   return (
     <div className="relative w-full h-full">
@@ -247,24 +275,101 @@ export default function MapWrapper() {
                   </p>
                   <div className="space-y-1 max-h-60 overflow-y-auto">
                     {displayStops.map((stop, index) => {
-                      // Removed unused variables isFirst and isLast
-                      const isOriginalFirst = index === 1; // Second item is the actual first stop of original data
-                      const isOriginalLast = index === displayStops.length - 1; // Last item remains the last stop
+                      // For MRT feeder buses, the first stop is at index 1 (due to cloned last stop at index 0)
+                      // For Rapid Bus KL, the first stop is at index 0
+                      const isOriginalFirst =
+                        busTypeParam === "mrtfeeder"
+                          ? index === 1
+                          : index === 0;
+                      const isOriginalLast = index === displayStops.length - 1;
                       const isClonedLastStop = stop.isClonedAsFirst;
+
+                      // For Rapid Bus KL, use the full stop_name which includes the code and location
+                      // For MRT Feeder, the stop_name is already formatted correctly
+                      let displayName = stop.stop_name;
+
+                      // For KL buses, extract just the actual name part (remove the road name)
+                      if (busTypeParam === "kl") {
+                        // First case: Names with comma separator (e.g., "KL1320 ENDAH VILLA CONDOMINIUM,JLN 2/149B")
+                        if (stop.stop_name.includes(",")) {
+                          const parts = stop.stop_name.split(",");
+                          if (parts.length > 1) {
+                            const codePart = parts[0].trim();
+                            // Extract the actual name by removing the code prefix (like "KL1320 ")
+                            const codeMatch =
+                              codePart.match(/^[A-Z]+\d+\s+(.+)$/);
+                            if (codeMatch && codeMatch[1]) {
+                              displayName = codeMatch[1].trim();
+                            } else {
+                              // Fallback if the regex doesn't match
+                              displayName = codePart;
+                            }
+                          }
+                        }
+                        // Special case: If stop_name is "Unknown" but we have a stop_code, use it
+                        else if (
+                          stop.stop_name === "Unknown" &&
+                          stop.stop_code &&
+                          stop.stop_code !== "N/A"
+                        ) {
+                          displayName = `${stop.stop_code}`;
+                        }
+                        // Second case: Names that are just street names (e.g., "JLN TUN ABDUL RAZAK")
+                        else if (
+                          stop.stop_name.startsWith("JLN ") ||
+                          stop.stop_name.startsWith("PERS ") ||
+                          stop.stop_name.startsWith("LEBUH ") ||
+                          stop.stop_name.startsWith("L/RAYA ")
+                        ) {
+                          // Try to find a nearby landmark or use the stop code
+                          if (stop.stop_code && stop.stop_code !== "N/A") {
+                            displayName = `${stop.stop_code}`;
+                          } else {
+                            // Just use a generic name with the stop ID as reference
+                            displayName = `Bus Stop ${index + 1}`;
+                          }
+                        }
+                        // Third case: Names with code prefix but no comma (e.g., "BD550 SRI TANJUNG 1")
+                        else {
+                          const codeMatch =
+                            stop.stop_name.match(/^[A-Z]+\d+\s+(.+)$/);
+                          if (codeMatch && codeMatch[1]) {
+                            displayName = codeMatch[1].trim();
+                          }
+                        }
+                      }
 
                       return (
                         <div
                           key={`${stop.stop_id}-${index}`} // Add index to key to avoid duplicate key issues
-                          className="text-xs p-2 bg-muted/50 rounded flex items-start"
+                          className="text-xs p-2 bg-muted/50 rounded flex items-start cursor-pointer hover:bg-muted/80 transition-colors"
+                          onClick={() => {
+                            // Find the map reference point to center on this stop
+                            const mapElement =
+                              document.querySelector(".leaflet-container");
+                            if (mapElement) {
+                              // Create a custom event to notify the BusStops component to focus on this stop
+                              const event = new CustomEvent("focus-stop", {
+                                detail: {
+                                  stopId: stop.stop_id,
+                                  lat: stop.stop_lat,
+                                  lon: stop.stop_lon,
+                                },
+                              });
+                              mapElement.dispatchEvent(event);
+                            }
+                          }}
                         >
                           <div className="mr-2 mt-0.5 flex-shrink-0">
                             <span className="inline-flex items-center justify-center w-5 h-5 bg-primary/10 text-primary text-xs font-medium rounded-full">
-                              {index} {/* Zero-based index to show stop #0 */}
+                              {/* For MRT feeder buses, keep the index as is (with 0st stop) */}
+                              {/* For Rapid Bus KL, start numbering from 1 instead of 0 */}
+                              {busTypeParam === "mrtfeeder" ? index : index + 1}
                             </span>
                           </div>
                           <div>
                             <div className="font-medium">
-                              {stop.stop_name}
+                              {displayName}
                               {isClonedLastStop && (
                                 <span className="ml-1 text-blue-500 font-bold">
                                   • Mrt Stop

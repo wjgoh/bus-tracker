@@ -11,10 +11,6 @@ export default function TrackButton() {
     (state) => state.loadVehiclesFromDatabase
   );
 
-  // We don't need to load vehicles on initial render here
-  // as it's already being done in MapWrapper and VehicleDataFetcher
-  // This prevents duplicate data loading and potential memory issues
-
   // Count active and inactive vehicles
   const activeVehicles = vehicles.filter((v) => v.isActive).length;
   const inactiveVehicles = vehicles.filter((v) => !v.isActive).length;
@@ -27,26 +23,44 @@ export default function TrackButton() {
         onClick={async () => {
           setIsLoading(true);
           try {
-            console.log("Manually fetching vehicle data...");
-            const response = await fetch("/api/gtfs");
+            // Fetch MRT feeder buses
+            console.log("Manually fetching all vehicle data...");
 
-            if (!response.ok) {
-              throw new Error(`API request failed: ${response.status}`);
+            // Fetch both bus types in parallel
+            const [mrtResponse, klResponse] = await Promise.all([
+              fetch("/api/gtfs?busType=mrtfeeder"),
+              fetch("/api/gtfs?busType=kl"),
+            ]);
+
+            if (!mrtResponse.ok || !klResponse.ok) {
+              throw new Error(`API request failed`);
             }
 
-            const result = await response.json();
+            // Parse the responses
+            const mrtResult = await mrtResponse.json();
+            const klResult = await klResponse.json();
 
-            if (result.success && result.data) {
-              // Get the vehicle store update function
-              const updateVehicles = useVehicleStore.getState().updateVehicles;
-              updateVehicles(result.data);
+            // Get the vehicle store update function
+            const updateVehicles = useVehicleStore.getState().updateVehicles;
 
-              // After updating the UI, reload from database to ensure we have the latest data
-              // including any vehicles that were marked inactive in the database
-              await loadVehiclesFromDatabase();
-
-              console.log(`Updated ${result.data.length} vehicles`);
+            // Update MRT feeder buses
+            if (mrtResult.success && mrtResult.data) {
+              updateVehicles(mrtResult.data);
+              console.log(
+                `Updated ${mrtResult.data.length} MRT feeder vehicles`
+              );
             }
+
+            // Update KL buses
+            if (klResult.success && klResult.data) {
+              updateVehicles(klResult.data);
+              console.log(`Updated ${klResult.data.length} KL vehicles`);
+            }
+
+            // After updating the UI, reload all vehicles from database to ensure we have the latest data
+            await loadVehiclesFromDatabase();
+
+            console.log("All vehicle data has been updated");
           } catch (error) {
             console.error("Error updating bus locations:", error);
           } finally {

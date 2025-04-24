@@ -28,12 +28,16 @@ interface MapProps {
 function MapController({ selectedRoute }: { selectedRoute: string }) {
   const map = useMap();
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const mapRef = useRef(map);
   const [stopsData, setStopsData] = useState<string>("");
   const [stopTimeData, setStopTimeData] = useState<string>("");
 
   // Track if we've already zoomed for the current route selection
   const [hasZoomed, setHasZoomed] = useState(false);
+
+  // Determine the bus type to use for API calls
+  const busTypeParam = selectedBusType || "mrtfeeder";
 
   // Update map reference when map changes
   useEffect(() => {
@@ -50,8 +54,10 @@ function MapController({ selectedRoute }: { selectedRoute: string }) {
     if (selectedRoute === "all" || hasZoomed) return;
 
     Promise.all([
-      fetch("/api/stops").then((res) => res.text()),
-      fetch("/api/stop_times").then((res) => res.text()),
+      fetch(`/api/stops?busType=${busTypeParam}`).then((res) => res.text()),
+      fetch(`/api/stop_times?busType=${busTypeParam}`).then((res) =>
+        res.text()
+      ),
     ])
       .then(([stops, stopTimes]) => {
         setStopsData(stops);
@@ -60,7 +66,7 @@ function MapController({ selectedRoute }: { selectedRoute: string }) {
       .catch((err) => {
         console.error("Error fetching stops data:", err);
       });
-  }, [selectedRoute, hasZoomed]);
+  }, [selectedRoute, hasZoomed, busTypeParam]);
 
   // Zoom to show all stops for the route
   useEffect(() => {
@@ -207,24 +213,33 @@ export default function Map({
   selectedRoute = "all",
 }: MapProps) {
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   const [stopsData, setStopsData] = useState<string>("");
   const [shapesData, setShapesData] = useState<string>("");
   const [tripsData, setTripsData] = useState<string>("");
   const [routeShapes, setRouteShapes] = useState<RouteShapeType[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Determine the bus type to use for API calls
+  const busTypeParam = selectedBusType || "mrtfeeder";
+
   // Load stops.txt data
   useEffect(() => {
     if (selectedRoute === "all") return;
-    fetch("/api/stops")
+
+    // Reset state when route/bus type changes
+    setStopsData("");
+
+    fetch(`/api/stops?busType=${busTypeParam}`)
       .then((response) => response.text())
       .then((data) => {
         setStopsData(data);
       })
       .catch((error) => {
         console.error("Error loading stops data:", error);
+        setFetchError(`Stops error: ${error.message}`);
       });
-  }, [selectedRoute]);
+  }, [selectedRoute, busTypeParam]);
 
   // Load shapes.txt data for route lines
   useEffect(() => {
@@ -233,51 +248,53 @@ export default function Map({
       return;
     }
 
-    // Fetch the shapes data if we don't already have it
-    if (!shapesData) {
-      console.log("Fetching shapes data...");
-      fetch("/api/shapes")
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
-          }
-          return response.text();
-        })
-        .then((data) => {
-          console.log(`Received shapes data: ${data.length} bytes`);
-          setShapesData(data);
-        })
-        .catch((error) => {
-          console.error("Error loading shapes data:", error);
-          setFetchError(`Shapes error: ${error.message}`);
-        });
-    }
-  }, [selectedRoute, shapesData]);
+    // Reset state when route/bus type changes
+    setShapesData("");
+
+    // Fetch the shapes data
+    console.log(`Fetching shapes data for bus type: ${busTypeParam}...`);
+    fetch(`/api/shapes?busType=${busTypeParam}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((data) => {
+        console.log(`Received shapes data: ${data.length} bytes`);
+        setShapesData(data);
+      })
+      .catch((error) => {
+        console.error("Error loading shapes data:", error);
+        setFetchError(`Shapes error: ${error.message}`);
+      });
+  }, [selectedRoute, busTypeParam]);
 
   // Load trips.txt data for route-shape relationships
   useEffect(() => {
     if (selectedRoute === "all") return;
 
-    // Fetch the trips data if we don't already have it
-    if (!tripsData) {
-      console.log("Fetching trips data...");
-      fetch("/api/trips")
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
-          }
-          return response.text();
-        })
-        .then((data) => {
-          console.log(`Received trips data: ${data.length} bytes`);
-          setTripsData(data);
-        })
-        .catch((error) => {
-          console.error("Error loading trips data:", error);
-          setFetchError(`Trips error: ${error.message}`);
-        });
-    }
-  }, [selectedRoute, tripsData]);
+    // Reset state when route/bus type changes
+    setTripsData("");
+
+    // Fetch the trips data
+    console.log(`Fetching trips data for bus type: ${busTypeParam}...`);
+    fetch(`/api/trips?busType=${busTypeParam}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((data) => {
+        console.log(`Received trips data: ${data.length} bytes`);
+        setTripsData(data);
+      })
+      .catch((error) => {
+        console.error("Error loading trips data:", error);
+        setFetchError(`Trips error: ${error.message}`);
+      });
+  }, [selectedRoute, busTypeParam]);
 
   // Process route shapes when data is available and route is selected
   useEffect(() => {
