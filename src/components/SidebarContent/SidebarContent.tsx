@@ -21,7 +21,6 @@ import {
   SettingsIcon,
   SearchIcon,
   CheckIcon,
-  ChevronsUpDown,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
@@ -29,15 +28,6 @@ import TrackButton from "@/components/TrackButton";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useVehicleStore } from "@/store/vehicleStore";
 

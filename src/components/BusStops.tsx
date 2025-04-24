@@ -2,6 +2,8 @@ import { CircleMarker, Popup, useMap } from "react-leaflet";
 import { useState, useEffect, useMemo } from "react";
 import { parseStopTimes } from "@/lib/routeUtil";
 import { useVehicleStore } from "@/store/vehicleStore";
+import React from 'react';
+import { LeafletEventHandlerFnMap } from 'leaflet';
 
 interface Stop {
   stop_id: string;
@@ -14,6 +16,17 @@ interface Stop {
 interface BusStopsProps {
   selectedRoute: string;
   stopsData?: string;
+}
+
+// Define the type for the focus-stop event
+interface FocusStopEventDetail {
+  stopId: string;
+  lat: number;
+  lon: number;
+}
+
+interface FocusStopEvent extends CustomEvent {
+  detail: FocusStopEventDetail;
 }
 
 export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
@@ -31,7 +44,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [isStopTimesLoaded, setIsStopTimesLoaded] = useState(false);
   const [activeStopId, setActiveStopId] = useState<string | null>(null);
 
-  // Store references to all marker popups
+  // Store references to all marker popups with proper typing
   const markerRefs = useMemo(() => new Map<string, any>(), []);
 
   // Determine the bus type to use for API calls
@@ -66,7 +79,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
     const mapElement = document.querySelector(".leaflet-container");
     if (!mapElement) return;
 
-    const handleFocusStopEvent = (e: any) => {
+    const handleFocusStopEvent = (e: FocusStopEvent) => {
       const { stopId, lat, lon } = e.detail;
 
       // Find the stop with this ID
@@ -83,12 +96,12 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       }
     };
 
-    mapElement.addEventListener("focus-stop", handleFocusStopEvent);
+    mapElement.addEventListener("focus-stop", handleFocusStopEvent as EventListener);
 
     return () => {
-      mapElement.removeEventListener("focus-stop", handleFocusStopEvent);
+      mapElement.removeEventListener("focus-stop", handleFocusStopEvent as EventListener);
     };
-  }, [map, stops]);
+  }, [map, stops, handleStopClick]);
 
   // Parse stops.txt data - do this first and only once when stopsData changes
   useEffect(() => {
