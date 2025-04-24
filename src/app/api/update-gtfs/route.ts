@@ -1,4 +1,4 @@
-import { fetchAndUnzipGtfsData } from "@/utils/fetchGtfsData";
+import { fetchAndUnzipGtfsData } from "@/lib/api/gtfsService";
 import { NextResponse } from "next/server";
 
 export async function GET() {

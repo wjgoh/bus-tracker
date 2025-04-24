@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
 /**
  * Custom hook to fetch and unzip GTFS data when the component mounts

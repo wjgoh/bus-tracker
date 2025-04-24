@@ -45,12 +45,30 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
 
 ## Project Structure
 
-Key files and directories:
+The project follows a feature-based directory structure for better maintainability:
+
+### Key Directories:
+
+- `src/app/` - Next.js app router pages and API routes
+- `src/components/` - React components organized by feature
+  - `src/components/map/` - Map-related components (Map, BusStops, RouteShape)
+  - `src/components/layout/` - Layout components including sidebar
+  - `src/components/ui/` - Reusable UI components from shadcn/ui
+- `src/lib/` - Utilities and services
+  - `src/lib/gtfs/` - GTFS data processing utilities
+  - `src/lib/api/` - API service functions
+- `src/hooks/` - Custom React hooks
+- `src/store/` - Zustand state management
+- `src/rapid_bus_mrtfeeder/` - GTFS data for MRT feeder buses
+- `src/rapid_bus_kl/` - GTFS data for Rapid Bus KL
+
+### Key Files:
 
 - `src/app/page.tsx` - Main application page
-- `src/components/MapWrapper.tsx` - Map component
+- `src/components/map/MapWrapper.tsx` - Map container component
+- `src/components/map/Map.tsx` - Interactive map with bus positions
 - `src/components/TrackButton.tsx` - Bus tracking controls
-- `public/` - Static assets
+- `src/lib/api/gtfsService.ts` - Centralized service for GTFS data handling
 
 ## Deployment
 

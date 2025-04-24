@@ -1,9 +1,9 @@
 import { CircleMarker, Popup, useMap } from "react-leaflet";
-import { useState, useEffect, useMemo, useCallback } from "react"; // Added useCallback
-import { parseStopTimes } from "@/lib/routeUtil";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { parseStopTimes } from "@/lib/gtfs/routeUtil";
 import { useVehicleStore } from "@/store/vehicleStore";
 import React from "react";
-import L from "leaflet"; // Added L import
+import L from "leaflet";
 
 interface Stop {
   stop_id: string;
@@ -51,28 +51,31 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const busTypeParam = selectedBusType || "mrtfeeder";
 
   // Function to handle stop selection from the card, wrapped in useCallback
-  const handleStopClick = useCallback((stop: Stop) => {
-    // Validate coordinates before trying to fly to them
-    if (isNaN(stop.stop_lat) || isNaN(stop.stop_lon)) {
-      console.error("Invalid coordinates for stop:", stop);
-      return;
-    }
+  const handleStopClick = useCallback(
+    (stop: Stop) => {
+      // Validate coordinates before trying to fly to them
+      if (isNaN(stop.stop_lat) || isNaN(stop.stop_lon)) {
+        console.error("Invalid coordinates for stop:", stop);
+        return;
+      }
 
-    // Close all popups first
-    map.closePopup();
+      // Close all popups first
+      map.closePopup();
 
-    // Fly to the stop location
-    map.flyTo([stop.stop_lat, stop.stop_lon], 18, {
-      animate: true,
-      duration: 1,
-    });
+      // Fly to the stop location
+      map.flyTo([stop.stop_lat, stop.stop_lon], 18, {
+        animate: true,
+        duration: 1,
+      });
 
-    // Set the active stop
-    setActiveStopId(stop.stop_id);
+      // Set the active stop
+      setActiveStopId(stop.stop_id);
 
-    // Simply center on the stop and let the user click it
-    // This is more reliable than trying to programmatically open the popup
-  }, [map]); // Dependencies for useCallback
+      // Simply center on the stop and let the user click it
+      // This is more reliable than trying to programmatically open the popup
+    },
+    [map]
+  ); // Dependencies for useCallback
 
   // Listen for focus-stop events from MapWrapper
   useEffect(() => {

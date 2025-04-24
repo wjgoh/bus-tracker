@@ -6,17 +6,17 @@ import { faBusSimple } from "@fortawesome/free-solid-svg-icons";
 import { divIcon } from "leaflet";
 import { renderToString } from "react-dom/server";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import LocationButton from "./LocationButton";
 import { createPortal } from "react-dom";
-import BusStops from "./BusStops";
-import RouteShape from "./RouteShape";
+import LocationButton from "@/components/map/LocationButton";
+import BusStops from "@/components/map/BusStops";
+import RouteShape from "@/components/map/RouteShape";
 import {
   RouteShape as RouteShapeType,
   parseShapes,
   parseTrips,
   buildRouteShapes,
   parseStopTimes,
-} from "@/lib/routeUtil";
+} from "@/lib/gtfs/routeUtil";
 
 interface MapProps {
   center?: [number, number];

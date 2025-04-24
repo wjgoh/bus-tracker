@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import { useState, Suspense, useEffect, useMemo } from "react";
 import { useVehicleStore } from "@/store/vehicleStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { parseStopTimes } from "@/lib/routeUtil";
+import { parseStopTimes } from "@/lib/gtfs/routeUtil";
 
 // Define proper types for stops data
 interface StopData {
@@ -161,7 +161,7 @@ export default function MapWrapper() {
   // Memoize the dynamic Map component to prevent unnecessary re-creation
   const MapComponent = useMemo(
     () =>
-      dynamic(() => import("@/components/Map"), {
+      dynamic(() => import("./Map"), {
         ssr: false,
         loading: () => <p>Loading map...</p>,
       }),

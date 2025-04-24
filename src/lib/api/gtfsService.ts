@@ -1,3 +1,8 @@
+/**
+ * GTFS Data Service
+ * Provides methods to fetch and handle GTFS data from APIs or local storage
+ */
+
 import axios from "axios";
 import { promises as fs } from "fs";
 import path from "path";
@@ -37,6 +42,9 @@ async function ensureDirectoryExists(dirPath: string): Promise<void> {
   }
 }
 
+/**
+ * Fetches GTFS data from APIs and unzips to appropriate directories
+ */
 export async function fetchAndUnzipGtfsData() {
   try {
     console.log("Fetching GTFS data from APIs...");
@@ -83,5 +91,41 @@ export async function fetchAndUnzipGtfsData() {
   } catch (error) {
     console.error("Error fetching or extracting GTFS data:", error);
     return false;
+  }
+}
+
+/**
+ * Fetches specific GTFS file data for a bus type
+ * @param fileName - Name of the GTFS file to fetch (e.g., 'stops.txt', 'routes.txt')
+ * @param busType - Type of bus ('mrtfeeder' or 'kl')
+ */
+export async function fetchGtfsFile(
+  fileName: string,
+  busType: string = "mrtfeeder"
+): Promise<string> {
+  try {
+    // Determine directory based on bus type
+    const dirName = busType === "kl" ? "rapid_bus_kl" : "rapid_bus_mrtfeeder";
+    const filePath = path.join(process.cwd(), "src", dirName, fileName);
+
+    // Read the file
+    const data = await fs.readFile(filePath, "utf8");
+    return data;
+  } catch (error) {
+    console.error(`Error fetching ${fileName} for ${busType}:`, error);
+    throw new Error(`Failed to fetch ${fileName} data for ${busType}`);
+  }
+}
+
+/**
+ * Fetches vehicle data from the backend API
+ */
+export async function fetchVehicleData() {
+  try {
+    const response = await axios.get("/api/getVehicleData");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching vehicle data:", error);
+    throw error;
   }
 }
