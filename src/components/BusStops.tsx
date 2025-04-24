@@ -1,4 +1,4 @@
-import { CircleMarker, Popup } from "react-leaflet";
+import { CircleMarker, Popup, useMap } from "react-leaflet";
 import { useState, useEffect, useMemo } from "react";
 import { parseStopTimes } from "@/lib/routeUtil";
 import { useVehicleStore } from "@/store/vehicleStore";
@@ -21,6 +21,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
   const [relevantStopIds, setRelevantStopIds] = useState<Set<string>>(
     new Set()
   );
+  const map = useMap(); // Get access to the Leaflet map instance
   const vehicles = useVehicleStore((state) => state.vehicles);
   const selectedBusType = useVehicleStore((state) => state.selectedBusType);
   // Fix type definition to match what parseStopTimes actually returns
@@ -28,9 +29,66 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
     Map<string, Array<{ stopId: string; sequence: number }>>
   >(new Map());
   const [isStopTimesLoaded, setIsStopTimesLoaded] = useState(false);
+  const [activeStopId, setActiveStopId] = useState<string | null>(null);
+
+  // Store references to all marker popups
+  const markerRefs = useMemo(() => new Map<string, any>(), []);
 
   // Determine the bus type to use for API calls
   const busTypeParam = selectedBusType || "mrtfeeder";
+
+  // Function to handle stop selection from the card
+  const handleStopClick = (stop: Stop) => {
+    // Validate coordinates before trying to fly to them
+    if (isNaN(stop.stop_lat) || isNaN(stop.stop_lon)) {
+      console.error("Invalid coordinates for stop:", stop);
+      return;
+    }
+
+    // Close all popups first
+    map.closePopup();
+
+    // Fly to the stop location
+    map.flyTo([stop.stop_lat, stop.stop_lon], 18, {
+      animate: true,
+      duration: 1,
+    });
+
+    // Set the active stop
+    setActiveStopId(stop.stop_id);
+
+    // Simply center on the stop and let the user click it
+    // This is more reliable than trying to programmatically open the popup
+  };
+
+  // Listen for focus-stop events from MapWrapper
+  useEffect(() => {
+    const mapElement = document.querySelector(".leaflet-container");
+    if (!mapElement) return;
+
+    const handleFocusStopEvent = (e: any) => {
+      const { stopId, lat, lon } = e.detail;
+
+      // Find the stop with this ID
+      const stopToFocus = stops.find((stop) => stop.stop_id === stopId);
+      if (stopToFocus) {
+        handleStopClick(stopToFocus);
+      } else if (!isNaN(lat) && !isNaN(lon)) {
+        // If we can't find the stop, use the provided coordinates
+        map.closePopup(); // Close any open popup
+        map.flyTo([lat, lon], 18, {
+          animate: true,
+          duration: 1,
+        });
+      }
+    };
+
+    mapElement.addEventListener("focus-stop", handleFocusStopEvent);
+
+    return () => {
+      mapElement.removeEventListener("focus-stop", handleFocusStopEvent);
+    };
+  }, [map, stops]);
 
   // Parse stops.txt data - do this first and only once when stopsData changes
   useEffect(() => {
@@ -38,13 +96,15 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
 
     // Reset stop data when stopsData changes
     setStops([]);
-    
+
     // Parse stops.txt content
     const stopLines = stopsData
       .split("\n")
       .filter((line) => line.trim().length > 0);
 
-    console.log(`Processing ${stopLines.length} stop lines for ${selectedRoute}`);
+    console.log(
+      `Processing ${stopLines.length} stop lines for ${selectedRoute}`
+    );
 
     // Skip header row and parse the data
     const parsedStops = stopLines.slice(1).map((line) => {
@@ -73,7 +133,7 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
     if (isStopTimesLoaded) return;
 
     console.log(`Fetching stop_times for bus type: ${busTypeParam}`);
-    
+
     fetch(`/api/stop_times?busType=${busTypeParam}`)
       .then((response) => {
         if (!response.ok) {
@@ -82,15 +142,22 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
         return response.text();
       })
       .then((data) => {
-        console.log(`Received stop_times data: ${data.length} bytes for ${busTypeParam}`);
+        console.log(
+          `Received stop_times data: ${data.length} bytes for ${busTypeParam}`
+        );
         // Parse the stop times data and store the mapping for reuse
         const parsedData = parseStopTimes(data);
-        console.log(`Parsed stop_times data contains ${parsedData.size} trip entries`);
+        console.log(
+          `Parsed stop_times data contains ${parsedData.size} trip entries`
+        );
         setTripToStopsMap(parsedData);
         setIsStopTimesLoaded(true);
       })
       .catch((error) => {
-        console.error(`Error loading stop_times data for ${busTypeParam}:`, error);
+        console.error(
+          `Error loading stop_times data for ${busTypeParam}:`,
+          error
+        );
       });
   }, [isStopTimesLoaded, busTypeParam]);
 
@@ -107,14 +174,16 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
 
       for (const vehicle of routeVehicles) {
         const tripId = vehicle.tripId;
-        
+
         if (tripToStopsMap.has(tripId)) {
           const stopSequences = tripToStopsMap.get(tripId)!;
           for (const item of stopSequences) {
             stopIdsForRoute.add(item.stopId);
           }
         } else {
-          console.log(`Trip ID not found in stop_times data: ${tripId} for route ${selectedRoute}`);
+          console.log(
+            `Trip ID not found in stop_times data: ${tripId} for route ${selectedRoute}`
+          );
         }
       }
 
@@ -126,15 +195,23 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
       console.log(`No vehicles found for route ${selectedRoute}`);
       setRelevantStopIds(new Set());
     }
-  }, [selectedRoute, tripToStopsMap, vehicles, isStopTimesLoaded, busTypeParam]);
+  }, [
+    selectedRoute,
+    tripToStopsMap,
+    vehicles,
+    isStopTimesLoaded,
+    busTypeParam,
+  ]);
 
   // Memoize the filtered stops to avoid recalculating on every render
   const stopsToShow = useMemo(() => {
     if (selectedRoute === "all") return stops;
-    
+
     const filtered = stops.filter((stop) => relevantStopIds.has(stop.stop_id));
-    console.log(`Filtered ${filtered.length} stops out of ${stops.length} total stops for display`);
-    
+    console.log(
+      `Filtered ${filtered.length} stops out of ${stops.length} total stops for display`
+    );
+
     return filtered;
   }, [stops, selectedRoute, relevantStopIds]);
 
@@ -154,19 +231,40 @@ export default function BusStops({ selectedRoute, stopsData }: BusStopsProps) {
           center={[stop.stop_lat, stop.stop_lon]}
           radius={5}
           pathOptions={{
-            fillColor: selectedBusType === "kl" ? "#e74c3c" : "#ff7800",
-            fillOpacity: 0.8,
-            weight: 1,
-            color: "#000",
+            fillColor: activeStopId === stop.stop_id 
+              ? "#3498db" // Blue color for selected stop
+              : selectedBusType === "kl" 
+                ? "#e74c3c"  // Red for Rapid Bus KL stops
+                : "#ff7800", // Orange for MRT Feeder stops
+            fillOpacity: activeStopId === stop.stop_id ? 1.0 : 0.8,
+            weight: activeStopId === stop.stop_id ? 2 : 1,
+            color: activeStopId === stop.stop_id ? "#0000ff" : "#000",
             opacity: 1,
+          }}
+          className={`stop-${stop.stop_id}`}
+          ref={(ref) => {
+            // Store reference to the leaflet element
+            if (ref) {
+              markerRefs.set(stop.stop_id, ref);
+            } else {
+              markerRefs.delete(stop.stop_id);
+            }
+          }}
+          eventHandlers={{
+            click: () => {
+              // Update active stop ID when clicked directly on map
+              setActiveStopId(stop.stop_id);
+            },
           }}
         >
           <Popup>
-            <div>
-              <h3 className="font-bold">{stop.stop_name}</h3>
+            <div className="text-sm">
+              <h3 className="font-bold text-base">{stop.stop_name}</h3>
               <p>Stop ID: {stop.stop_id}</p>
               <p>Stop Code: {stop.stop_code}</p>
-              <p className="text-xs text-gray-500">Bus Type: {busTypeParam}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Bus Type: {busTypeParam}
+              </p>
             </div>
           </Popup>
         </CircleMarker>
