@@ -16,6 +16,7 @@ export interface RouteShape {
   shape_id: string;
   points: [number, number][]; // Array of [lat, lng] coordinates
   direction?: "forward" | "backward"; // Travel direction (based on stop sequence)
+  routeShortName?: string; // Route short name for display purposes
 }
 
 /**

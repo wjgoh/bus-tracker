@@ -219,6 +219,7 @@ export default function Map({
   const [tripsData, setTripsData] = useState<string>("");
   const [routeShapes, setRouteShapes] = useState<RouteShapeType[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [routesData, setRoutesData] = useState<string>("");
 
   // Determine the bus type to use for API calls
   const busTypeParam = selectedBusType || "mrtfeeder";
@@ -295,10 +296,36 @@ export default function Map({
         setFetchError(`Trips error: ${error.message}`);
       });
   }, [selectedRoute, busTypeParam]);
+  
+  // Load routes.txt data for route names
+  useEffect(() => {
+    if (selectedRoute === "all") return;
+
+    // Reset state when route/bus type changes
+    setRoutesData("");
+
+    // Fetch the routes data
+    console.log(`Fetching routes data for bus type: ${busTypeParam}...`);
+    fetch(`/api/routes?busType=${busTypeParam}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
+        return response.text();
+      })
+      .then((data) => {
+        console.log(`Received routes data: ${data.length} bytes`);
+        setRoutesData(data);
+      })
+      .catch((error) => {
+        console.error("Error loading routes data:", error);
+        setFetchError(`Routes error: ${error.message}`);
+      });
+  }, [selectedRoute, busTypeParam]);
 
   // Process route shapes when data is available and route is selected
   useEffect(() => {
-    if (selectedRoute === "all" || !shapesData || !tripsData) {
+    if (selectedRoute === "all" || !shapesData || !tripsData || !routesData) {
       setRouteShapes([]);
       return;
     }
@@ -307,14 +334,37 @@ export default function Map({
     console.log(`Selected route: ${selectedRoute}`);
     console.log(`Shapes data size: ${shapesData.length} bytes`);
     console.log(`Trips data size: ${tripsData.length} bytes`);
+    console.log(`Routes data size: ${routesData.length} bytes`);
 
     try {
       // Check the first few lines of each file to confirm format
       const shapesLines = shapesData.split("\n").slice(0, 3);
       const tripsLines = tripsData.split("\n").slice(0, 3);
+      const routesLines = routesData.split("\n").slice(0, 3);
 
       console.log("Shapes data first lines:", shapesLines);
       console.log("Trips data first lines:", tripsLines);
+      console.log("Routes data first lines:", routesLines);
+
+      // Parse routes data to get route_short_name mapping
+      const routeToShortName: Record<string, string> = {};
+      const routeLines = routesData.split("\n");
+      const routeHeaders = routeLines[0].split(",");
+      const routeIdIndex = routeHeaders.findIndex((h) => h.trim() === "route_id");
+      const routeShortNameIndex = routeHeaders.findIndex((h) => h.trim() === "route_short_name");
+      
+      if (routeIdIndex !== -1 && routeShortNameIndex !== -1) {
+        routeLines.slice(1).forEach((line) => {
+          const values = line.split(",");
+          if (values.length > Math.max(routeIdIndex, routeShortNameIndex)) {
+            const routeId = values[routeIdIndex].trim();
+            const routeShortName = values[routeShortNameIndex].trim();
+            if (routeId && routeShortName) {
+              routeToShortName[routeId] = routeShortName;
+            }
+          }
+        });
+      }
 
       const shapePoints = parseShapes(shapesData);
       const tripToShapes = parseTrips(tripsData);
@@ -348,6 +398,16 @@ export default function Map({
         tripToShapes,
         selectedTripId
       );
+      
+      // Add route_short_name to shapes
+      if (busTypeParam === "kl") {
+        shapes.forEach(shape => {
+          if (routeToShortName[shape.route_id]) {
+            shape.routeShortName = routeToShortName[shape.route_id];
+          }
+        });
+      }
+      
       console.log(`Setting ${shapes.length} route shapes`);
 
       // Check if shapes have valid data
@@ -362,6 +422,7 @@ export default function Map({
         const sampleShape = shapes[0];
         console.log(`Sample shape (${sampleShape.shape_id}) data:`, {
           route_id: sampleShape.route_id,
+          routeShortName: sampleShape.routeShortName,
           points_count: sampleShape.points.length,
           first_point: sampleShape.points[0],
           last_point: sampleShape.points[sampleShape.points.length - 1],
@@ -374,7 +435,7 @@ export default function Map({
       setFetchError(`Processing error: ${(error as Error).message}`);
       setRouteShapes([]);
     }
-  }, [selectedRoute, shapesData, tripsData, vehicles]);
+  }, [selectedRoute, shapesData, tripsData, vehicles, busTypeParam, routesData]);
 
   const filteredVehicles = useMemo(() => {
     return selectedRoute === "all"
@@ -448,7 +509,7 @@ export default function Map({
           >
             <Popup>
               <div>
-                <p>Route: {vehicle.routeId}</p>
+                <p>Route: {vehicle.busType === "kl" && routeShapes.find(shape => shape.route_id === vehicle.routeId)?.routeShortName || vehicle.routeId}</p>
                 <p>Vehicle ID: {vehicle.vehicleId}</p>
                 <p>Status: {vehicle.status}</p>
                 <p>

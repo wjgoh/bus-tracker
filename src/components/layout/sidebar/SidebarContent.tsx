@@ -36,11 +36,15 @@ type RouteOption = {
   value: string;
   label: string;
   busType?: string;
+  originalRouteId?: string;
 };
+
+
 
 export function BusTrackerSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const vehicles = useVehicleStore((state) => state.vehicles);
+  const [klRoutesMap, setKlRoutesMap] = useState<Map<string, string>>(new Map());
 
   // Access the vehicle store
   const selectedRoute =
@@ -58,6 +62,33 @@ export function BusTrackerSidebar() {
     loadVehiclesFromDatabase();
   }, [loadVehiclesFromDatabase]);
 
+  // Effect to load KL routes mapping
+  useEffect(() => {
+    fetch("/api/routes?busType=kl")
+      .then(response => response.text())
+      .then(data => {
+        const routesMap = new Map<string, string>();
+        // Parse the CSV data
+        const lines = data.split("\n");
+        // Skip the header
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line) {
+            const parts = line.split(",");
+            if (parts.length >= 3) {
+              const routeId = parts[0].trim();
+              const routeShortName = parts[2].trim();
+              if (routeId && routeShortName) {
+                routesMap.set(routeId, routeShortName);
+              }
+            }
+          }
+        }
+        setKlRoutesMap(routesMap);
+      })
+      .catch(error => console.error("Error loading KL routes:", error));
+  }, []);
+
   // Get unique route options and format them for the ComboBox
   const routeOptions: RouteOption[] = [
     {
@@ -70,10 +101,19 @@ export function BusTrackerSidebar() {
       .map((route) => {
         // Find a representative vehicle for this route to get its bus type
         const routeVehicle = vehicles.find((v) => v.routeId === route);
+        const busType = routeVehicle?.busType || "unknown";
+        
+        // Use route_short_name for KL routes if available
+        let label = route;
+        if (busType === "kl" && klRoutesMap.has(route)) {
+          label = klRoutesMap.get(route) || route;
+        }
+        
         return {
           value: route,
-          label: route,
-          busType: routeVehicle?.busType || "unknown",
+          label: label,
+          busType: busType,
+          originalRouteId: route,
         };
       }),
   ];
@@ -159,6 +199,7 @@ export function BusTrackerSidebar() {
                                   "font-medium text-sm",
                                   selectedRoute !== route.value && "ml-6" // Keep alignment consistent
                                 )}
+                                title={route.originalRouteId === route.label ? "" : `Route ID: ${route.originalRouteId}`}
                               >
                                 {route.label}
                               </span>
@@ -194,7 +235,9 @@ export function BusTrackerSidebar() {
                       <span className="text-xs text-muted-foreground">
                         Currently showing:
                       </span>
-                      <span className="font-medium">{selectedRoute}</span>
+                      <span className="font-medium">
+                        {routeOptions.find(r => r.value === selectedRoute)?.label || selectedRoute}
+                      </span>
                     </div>
                     <Badge
                       variant={
