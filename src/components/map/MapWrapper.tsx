@@ -1,7 +1,8 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, Suspense, useEffect, useMemo } from "react";
+import { useState, Suspense, useEffect, useMemo, useCallback } from "react";
 import { useVehicleStore } from "@/store/vehicleStore";
+import { useStopStore } from "@/store/stopStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseStopTimes } from "@/lib/gtfs/routeUtil";
 
@@ -33,6 +34,31 @@ export default function MapWrapper() {
   const [relevantStopIds, setRelevantStopIds] = useState<Set<string>>(
     new Set()
   );
+  const activeStopId = useStopStore((state) => state.activeStopId);
+  const setActiveStopId = useStopStore((state) => state.setActiveStopId);
+
+  // Function to scroll to active stop in the stops list, wrapped in useCallback
+  const scrollToActiveStop = useCallback(() => {
+    if (activeStopId) {
+      // Wait for render to complete
+      setTimeout(() => {
+        const activeStopElement = document.getElementById(
+          `stop-${activeStopId}`
+        );
+        if (activeStopElement) {
+          activeStopElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }, 100);
+    }
+  }, [activeStopId]);
+
+  // Effect to scroll to active stop when it changes
+  useEffect(() => {
+    scrollToActiveStop();
+  }, [scrollToActiveStop]);
 
   const loadVehiclesFromDatabase = useVehicleStore(
     (state) => state.loadVehiclesFromDatabase
@@ -342,8 +368,16 @@ export default function MapWrapper() {
                       return (
                         <div
                           key={`${stop.stop_id}-${index}`} // Add index to key to avoid duplicate key issues
-                          className="text-xs p-2 bg-muted/50 rounded flex items-start cursor-pointer hover:bg-muted/80 transition-colors"
+                          id={`stop-${stop.stop_id}`}
+                          className={`text-xs p-2 rounded flex items-start cursor-pointer transition-all duration-200 ${
+                            activeStopId === stop.stop_id
+                              ? "bg-primary/20 border border-primary shadow-md"
+                              : "bg-muted/50 hover:bg-muted/80"
+                          }`}
                           onClick={() => {
+                            // Update the active stop ID using the global store
+                            setActiveStopId(stop.stop_id);
+
                             // Find the map reference point to center on this stop
                             const mapElement =
                               document.querySelector(".leaflet-container");
@@ -368,7 +402,13 @@ export default function MapWrapper() {
                             </span>
                           </div>
                           <div>
-                            <div className="font-medium">
+                            <div
+                              className={`font-medium ${
+                                activeStopId === stop.stop_id
+                                  ? "text-primary font-bold"
+                                  : ""
+                              }`}
+                            >
                               {displayName}
                               {isClonedLastStop && (
                                 <span className="ml-1 text-blue-500 font-bold">
@@ -399,7 +439,14 @@ export default function MapWrapper() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-muted-foreground">
+                            <div
+                              className={`text-muted-foreground ${
+                                activeStopId === stop.stop_id
+                                  ? "text-primary-foreground/80"
+                                  : ""
+                              }`}
+                            >
+                              Stop Code: {stop.stop_code} <br />
                               ID: {stop.stop_id}
                             </div>
                           </div>

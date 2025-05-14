@@ -490,7 +490,10 @@ export default function Map({
 
         {/* Display bus stops */}
         {selectedRoute !== "all" && stopsData && (
-          <BusStops selectedRoute={selectedRoute} stopsData={stopsData} />
+          <BusStops 
+            selectedRoute={selectedRoute} 
+            stopsData={stopsData}
+          />
         )}
 
         {/* Display vehicles */}
