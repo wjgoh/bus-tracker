@@ -7,13 +7,13 @@ import "leaflet-polylinedecorator";
 interface RouteShapeProps {
   shapes: RouteShape[];
   color?: string;
-  arrowStyle?: 'default' | 'elegant' | 'minimal';
+  arrowStyle?: "default" | "elegant" | "minimal";
 }
 
 const RouteShapeComponent: React.FC<RouteShapeProps> = ({
   shapes,
   color = "#3388ff",
-  arrowStyle = 'default',
+  arrowStyle = "default",
 }) => {
   const map = useMap();
   const polylineRefs = useRef<Map<string, L.Polyline>>(new Map());
@@ -38,21 +38,21 @@ const RouteShapeComponent: React.FC<RouteShapeProps> = ({
 
       shapes.forEach((shape) => {
         const polylineObj = polylineRefs.current.get(shape.shape_id);
-        
+
         if (polylineObj && shape.points.length > 2) {
           // Get arrow pattern based on selected style
           const patterns = getArrowPatterns(arrowStyle, color);
-          
+
           const decorator = L.polylineDecorator(polylineObj, {
             patterns,
           });
-          
+
           decorator.addTo(map);
           decoratorsRef.current.push(decorator);
         }
       });
     }, 100); // Short delay to ensure polylines are rendered
-    
+
     return () => {
       clearTimeout(timer);
       cleanupDecorators();
@@ -70,7 +70,7 @@ const RouteShapeComponent: React.FC<RouteShapeProps> = ({
           opacity={0.7}
           eventHandlers={{
             add: (event) => {
-              // Store reference to the native Leaflet polyline 
+              // Store reference to the native Leaflet polyline
               polylineRefs.current.set(shape.shape_id, event.target);
             },
             remove: () => {
@@ -84,7 +84,10 @@ const RouteShapeComponent: React.FC<RouteShapeProps> = ({
 };
 
 // Helper function to get appropriate arrow patterns based on style
-const getArrowPatterns = (style: 'default' | 'elegant' | 'minimal', color: string) => {
+const getArrowPatterns = (
+  style: "default" | "elegant" | "minimal",
+  color: string
+) => {
   // Instead of using SVG arrows with markers which have rotation issues,
   // we'll go back to using the built-in arrowHead but customize it to look more like a static arrow
   const createStaticArrowSymbol = (size: number, weight: number) => {
@@ -97,35 +100,35 @@ const getArrowPatterns = (style: 'default' | 'elegant' | 'minimal', color: strin
         color: color,
         opacity: 0.8,
         fill: false,
-        fillOpacity: 0
-      }
+        fillOpacity: 0,
+      },
     });
   };
 
   switch (style) {
-    case 'elegant':
+    case "elegant":
       return [
         {
           offset: 50,
           repeat: 120,
-          symbol: createStaticArrowSymbol(14, 2)
-        }
+          symbol: createStaticArrowSymbol(12, 1.8),
+        },
       ];
-    case 'minimal':
+    case "minimal":
       return [
         {
           offset: 25,
           repeat: 150,
-          symbol: createStaticArrowSymbol(10, 1)
-        }
+          symbol: createStaticArrowSymbol(8, 0.8),
+        },
       ];
     default:
       return [
         {
           offset: 50,
           repeat: 150,
-          symbol: createStaticArrowSymbol(16, 2.5)
-        }
+          symbol: createStaticArrowSymbol(14, 2.2),
+        },
       ];
   }
 };
