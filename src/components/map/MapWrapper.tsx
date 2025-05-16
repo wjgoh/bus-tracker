@@ -364,14 +364,13 @@ export default function MapWrapper() {
                           }
                         }
                       }
-
                       return (
                         <div
                           key={`${stop.stop_id}-${index}`} // Add index to key to avoid duplicate key issues
                           id={`stop-${stop.stop_id}`}
                           className={`text-xs p-2 rounded flex items-start cursor-pointer transition-all duration-200 ${
                             activeStopId === stop.stop_id
-                              ? "bg-primary/20 border border-primary shadow-md"
+                              ? "bg-primary/70 dark:bg-primary/30 border border-primary shadow-md" // Higher opacity for light mode
                               : "bg-muted/50 hover:bg-muted/80"
                           }`}
                           onClick={() => {
@@ -402,10 +401,11 @@ export default function MapWrapper() {
                             </span>
                           </div>
                           <div>
+                            {" "}
                             <div
                               className={`font-medium ${
                                 activeStopId === stop.stop_id
-                                  ? "text-primary font-bold"
+                                  ? "text-white font-bold"
                                   : ""
                               }`}
                             >
@@ -438,16 +438,24 @@ export default function MapWrapper() {
                                   • Terminal End
                                 </span>
                               )}
-                            </div>
+                            </div>{" "}
                             <div
                               className={`text-muted-foreground ${
                                 activeStopId === stop.stop_id
-                                  ? "text-primary-foreground/80"
+                                  ? "text-gray-300 font-normal"
                                   : ""
                               }`}
                             >
-                              Stop Code: {stop.stop_code} <br />
-                              ID: {stop.stop_id}
+                              <span
+                                className={
+                                  activeStopId === stop.stop_id
+                                    ? "text-gray-300"
+                                    : ""
+                                }
+                              >
+                                Stop Code: {stop.stop_code} <br />
+                                ID: {stop.stop_id}
+                              </span>
                             </div>
                           </div>
                         </div>
