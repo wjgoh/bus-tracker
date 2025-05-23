@@ -23,6 +23,9 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
+      // Only handle drag on the handle, not the content
+      if (!dragHandleRef.current?.contains(e.target as Node)) return;
+
       e.preventDefault();
       e.stopPropagation();
 
@@ -75,6 +78,9 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      // Only handle drag on the handle, not the content
+      if (!dragHandleRef.current?.contains(e.target as Node)) return;
+
       e.preventDefault();
       setIsDragging(true);
       setStartY(e.clientY);
@@ -144,7 +150,7 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
     <div
       ref={sheetRef}
       className={cn(
-        "fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-lg shadow-lg z-50",
+        "fixed bottom-0 left-0 right-0 bg-background border-t border-border rounded-t-lg shadow-lg z-50 flex flex-col",
         isDragging ? "transition-none" : "transition-all duration-300 ease-out",
         className
       )}
@@ -154,7 +160,7 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
       <div
         ref={dragHandleRef}
         className={cn(
-          "flex justify-center items-center py-3 cursor-grab select-none touch-none",
+          "flex justify-center items-center py-3 cursor-grab select-none touch-none flex-shrink-0",
           isDragging && "cursor-grabbing"
         )}
         onTouchStart={handleTouchStart}
@@ -167,11 +173,14 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
         <div className="w-12 h-1 bg-muted-foreground/40 rounded-full" />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-hidden min-h-0">
         <div
-          className="h-full overflow-y-auto px-4 pb-4"
-          style={{ touchAction: "pan-y" }}
+          className="h-full overflow-y-auto overflow-x-hidden px-4 pb-4 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+          style={{
+            touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch",
+          }}
         >
           {children}
         </div>
