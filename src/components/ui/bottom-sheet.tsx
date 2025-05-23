@@ -14,14 +14,12 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
   const [height, setHeight] = useState(200);
   const [startY, setStartY] = useState(0);
   const [startHeight, setStartHeight] = useState(0);
-  const [lastMoveTime, setLastMoveTime] = useState(0);
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
 
-  const minHeight = 80; // Reduced minimum for more flexibility
-  const maxHeight = typeof window !== "undefined" ? window.innerHeight * 0.95 : 600; // Increased maximum
-  const snapThreshold = 30; // Reduced for more precise control
-  const velocity = useRef(0);
+  const minHeight = 60;
+  const maxHeight =
+    typeof window !== "undefined" ? window.innerHeight * 0.95 : 600;
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
@@ -31,8 +29,6 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
       setIsDragging(true);
       setStartY(e.touches[0].clientY);
       setStartHeight(height);
-      setLastMoveTime(Date.now());
-      velocity.current = 0;
 
       // Disable body scroll
       document.body.style.overflow = "hidden";
@@ -49,23 +45,14 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
 
       const currentY = e.touches[0].clientY;
       const deltaY = startY - currentY;
-      // Allow free movement within the full range
       const newHeight = Math.max(
         minHeight,
         Math.min(maxHeight, startHeight + deltaY)
       );
 
-      // Calculate velocity for better snapping
-      const currentTime = Date.now();
-      const timeDelta = currentTime - lastMoveTime;
-      if (timeDelta > 0) {
-        velocity.current = deltaY / timeDelta;
-      }
-      setLastMoveTime(currentTime);
-
       setHeight(newHeight);
     },
-    [isDragging, startY, startHeight, minHeight, maxHeight, lastMoveTime]
+    [isDragging, startY, startHeight, minHeight, maxHeight]
   );
 
   const handleTouchEnd = useCallback(
@@ -80,27 +67,10 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
       // Re-enable body scroll
       document.body.style.overflow = "";
 
-      // Only snap if velocity is high, otherwise keep current position
-      const velocityThreshold = 1.0; // Increased threshold
-      const isSwipeUp = velocity.current > velocityThreshold;
-      const isSwipeDown = velocity.current < -velocityThreshold;
-
-      if (isSwipeDown) {
-        // Fast swipe down - collapse
-        setHeight(minHeight);
-        setIsOpen(false);
-      } else if (isSwipeUp) {
-        // Fast swipe up - expand to comfortable size or max
-        const targetHeight =
-          height < maxHeight * 0.5 ? maxHeight * 0.6 : maxHeight;
-        setHeight(targetHeight);
-        setIsOpen(true);
-      } else {
-        // Gentle drag - keep current position but update open state
-        setIsOpen(height > minHeight + 50);
-      }
+      // No snapping - just update open state based on current height
+      setIsOpen(height > 100);
     },
-    [isDragging, height, maxHeight, minHeight]
+    [isDragging, height]
   );
 
   const handleMouseDown = useCallback(
@@ -118,7 +88,6 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
       if (!isDragging) return;
 
       const deltaY = startY - e.clientY;
-      // Allow free movement within the full range
       const newHeight = Math.max(
         minHeight,
         Math.min(maxHeight, startHeight + deltaY)
@@ -134,18 +103,9 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
 
     setIsDragging(false);
 
-    // For mouse, use gentler snapping - only snap to extremes if very close
-    if (height < minHeight + snapThreshold) {
-      setHeight(minHeight);
-      setIsOpen(false);
-    } else if (height > maxHeight - snapThreshold) {
-      setHeight(maxHeight);
-      setIsOpen(true);
-    } else {
-      // Keep current position
-      setIsOpen(height > minHeight + 50);
-    }
-  }, [isDragging, height, maxHeight, minHeight, snapThreshold]);
+    // No snapping - just update open state
+    setIsOpen(height > 100);
+  }, [isDragging, height]);
 
   useEffect(() => {
     if (isDragging) {
@@ -170,14 +130,14 @@ export function BottomSheet({ children, className }: BottomSheetProps) {
       e.stopPropagation();
 
       if (isOpen) {
-        setHeight(minHeight);
+        setHeight(60);
         setIsOpen(false);
       } else {
-        setHeight(maxHeight * 0.6); // More reasonable default size
+        setHeight(400);
         setIsOpen(true);
       }
     },
-    [isDragging, isOpen, minHeight, maxHeight]
+    [isDragging, isOpen]
   );
 
   return (
