@@ -1,8 +1,8 @@
 /**
- * Utility functions for handling route shape data
+ * Utility functions for handling GTFS route shape data
  */
 
-import { getAllPossibleTripIds, debugTripIdsInTrips } from "./routeMapping";
+import { getAllPossibleTripIds, debugTripIdsInTrips } from "../routeMapping";
 
 export interface ShapePoint {
   shape_id: string;
@@ -15,6 +15,8 @@ export interface RouteShape {
   route_id: string;
   shape_id: string;
   points: [number, number][]; // Array of [lat, lng] coordinates
+  direction?: "forward" | "backward"; // Travel direction (based on stop sequence)
+  routeShortName?: string; // Route short name for display purposes
 }
 
 /**
@@ -176,12 +178,118 @@ export function parseTrips(tripsData: string): Map<string, Set<string>> {
 }
 
 /**
+ * Parse stop_times.txt to get the relationship between trips and stops with sequence information
+ */
+export function parseStopTimes(
+  stopTimesData: string
+): Map<string, Array<{ stopId: string; sequence: number }>> {
+  if (!stopTimesData) return new Map();
+
+  try {
+    const tripToStopSequences = new Map<
+      string,
+      Array<{ stopId: string; sequence: number }>
+    >();
+    const lines = stopTimesData
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+
+    // Debug the header to understand the column structure
+    if (lines.length > 0) {
+      console.log("Stop times file header:", lines[0]);
+      if (lines.length > 1) {
+        console.log("First stop time data line:", lines[1]);
+      }
+    }
+
+    // Determine column indices from header
+    const headers = lines[0].toLowerCase().split(",");
+    const tripIdIndex = headers.findIndex((h) => h.trim() === "trip_id");
+    const stopIdIndex = headers.findIndex((h) => h.trim() === "stop_id");
+    const stopSequenceIndex = headers.findIndex(
+      (h) => h.trim() === "stop_sequence"
+    );
+
+    console.log(
+      `Found trip_id at column ${tripIdIndex}, stop_id at column ${stopIdIndex}, stop_sequence at column ${stopSequenceIndex}`
+    );
+
+    if (stopIdIndex === -1 || tripIdIndex === -1) {
+      console.error(
+        "Could not find stop_id or trip_id columns in stop_times file"
+      );
+      return new Map();
+    }
+
+    // Skip header and process trip to stop relationships with sequence
+    lines.slice(1).forEach((line, idx) => {
+      const values = line.split(",");
+
+      if (
+        values.length <= Math.max(tripIdIndex, stopIdIndex, stopSequenceIndex)
+      ) {
+        console.warn(`Line ${idx + 2} doesn't have enough columns:`, line);
+        return;
+      }
+
+      const trip_id = values[tripIdIndex].trim();
+      const stop_id = values[stopIdIndex].trim();
+      const sequence =
+        stopSequenceIndex !== -1
+          ? parseInt(values[stopSequenceIndex].trim(), 10)
+          : idx;
+
+      if (trip_id && stop_id) {
+        if (!tripToStopSequences.has(trip_id)) {
+          tripToStopSequences.set(trip_id, []);
+        }
+        tripToStopSequences.get(trip_id)!.push({
+          stopId: stop_id,
+          sequence: isNaN(sequence) ? idx : sequence,
+        });
+      }
+    });
+
+    // Sort each trip's stops by sequence number
+    tripToStopSequences.forEach((stops) => {
+      stops.sort((a, b) => a.sequence - b.sequence);
+    });
+
+    console.log(
+      `Found trip-stop mappings for ${tripToStopSequences.size} trips`
+    );
+    return tripToStopSequences;
+  } catch (error) {
+    console.error("Error parsing stop_times data:", error);
+    return new Map();
+  }
+}
+
+/**
+ * Determine the direction of a shape by comparing first and last stops in the sequence
+ */
+export function determineRouteDirection(
+  shapePoints: ShapePoint[],
+  tripStopSequence: Array<{ stopId: string; sequence: number }>
+): "forward" | "backward" | undefined {
+  if (tripStopSequence.length < 2) {
+    return undefined;
+  }
+
+  // For now just return "forward" as a default
+  // In a real implementation, you would compare the geographic direction
+  // of the shape points to the stop sequence to determine direction
+  return "forward";
+}
+
+/**
  * Build route shapes for a specific trip ID
  */
 export function buildRouteShapes(
   shapePoints: ShapePoint[],
   tripToShapes: Map<string, Set<string>>,
-  selectedTripId: string
+  selectedTripId: string,
+  tripStopSequence?: Array<{ stopId: string; sequence: number }>
 ): RouteShape[] {
   console.log(`Building route shapes for trip ${selectedTripId}`);
 
@@ -255,13 +363,21 @@ export function buildRouteShapes(
         );
       }
 
+      // Determine the direction of the route
+      const direction = tripStopSequence
+        ? determineRouteDirection(points, tripStopSequence)
+        : undefined;
+
       routeShapes.push({
         route_id: selectedTripId, // We're using trip_id as the identifier
         shape_id: shapeId,
         points: coordinates,
+        direction, // Add the direction
       });
       console.log(
-        `Created shape for ${shapeId} with ${coordinates.length} points`
+        `Created shape for ${shapeId} with ${
+          coordinates.length
+        } points and direction: ${direction || "unknown"}`
       );
     } else {
       console.warn(`No valid coordinates for shape ${shapeId}`);

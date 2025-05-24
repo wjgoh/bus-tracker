@@ -1,5 +1,5 @@
-import MapWrapper from "@/components/MapWrapper";
-import { BusTrackerSidebar } from "@/components/SidebarContent/SidebarContent";
+import MapWrapper from "@/components/map/MapWrapper";
+import { BusTrackerSidebar } from "@/components/layout/sidebar/SidebarContent";
 import { SidebarInset } from "@/components/ui/sidebar";
 
 export default function Home() {
