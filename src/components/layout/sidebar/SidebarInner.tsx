@@ -1,22 +1,12 @@
 "use client";
 
 import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import {
-  MapIcon,
-  BusIcon,
-  InfoIcon,
-  SettingsIcon,
-  SearchIcon,
-  CheckIcon,
-} from "lucide-react";
+import { BusIcon, SearchIcon, CheckIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import GtfsUpdateButton from "@/components/GtfsUpdateButton";
 import TrackButton from "@/components/TrackButton";
@@ -137,9 +127,10 @@ export function SidebarInner({ isMobile = false }: SidebarInnerProps) {
   const filteredRoutes = routeOptions.filter((route) =>
     route.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
   const handleRouteSelect = (route: string) => {
     setSelectedRoute(route);
+    // Clear the search query when a route is selected
+    setSearchQuery("");
     if (route === "all") {
       setSelectedBusType(undefined);
     } else {
@@ -324,7 +315,6 @@ export function SidebarInner({ isMobile = false }: SidebarInnerProps) {
 
     return filteredStopsWithSequence;
   }, [filteredStopsWithSequence, busTypeParam]);
-
   return (
     <div className={cn("flex flex-col", isMobile ? "h-full" : "")}>
       {/* Header - only show on mobile */}
@@ -334,8 +324,7 @@ export function SidebarInner({ isMobile = false }: SidebarInnerProps) {
           <h2 className="font-semibold text-lg">Bus Tracker</h2>
         </div>
       )}
-
-      <div className="flex-1 overflow-y-auto">
+      <div className={`${isMobile ? '' : 'flex-1'} overflow-y-auto`}>
         <SidebarGroup>
           <SidebarGroupLabel>Route Selection</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -409,7 +398,6 @@ export function SidebarInner({ isMobile = false }: SidebarInnerProps) {
                 )}
               </div>
             </div>
-
             {/* Currently Selected Route */}
             {selectedRoute !== "all" && (
               <div className="px-3 mb-3">
@@ -439,56 +427,16 @@ export function SidebarInner({ isMobile = false }: SidebarInnerProps) {
                   </Badge>
                 </div>
               </div>
-            )}
+            )}{" "}
           </SidebarGroupContent>
         </SidebarGroup>
-
+        <SidebarSeparator className="mx-auto w-3/4" />{" "}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton isActive={true} tooltip="Map">
-                  <MapIcon />
-                  <span>Map View</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Bus Routes">
-                  <BusIcon />
-                  <span>Bus Routes</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator className="mx-auto w-3/4" />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Information</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="About">
-                  <InfoIcon />
-                  <span>About</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Settings">
-                  <SettingsIcon />
-                  <span>Settings</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-
-            <div className="w-full flex flex-col gap-4 mt-4">
+            <div className="w-full flex flex-col gap-4">
               <TrackButton />
               <GtfsUpdateButton />
-            </div>
-
-            {/* Show stops information in bottom sheet for mobile view */}
+            </div>            {/* Show stops information in bottom sheet for mobile view */}
             {isMobile && selectedRoute !== "all" && (
               <div className="mt-6 px-3">
                 <h3 className="text-sm font-medium mb-2">
@@ -500,21 +448,21 @@ export function SidebarInner({ isMobile = false }: SidebarInnerProps) {
                   busTypeParam={busTypeParam}
                   displayStops={displayStops}
                   loadingStops={loadingStops}
-                  className="pt-2"
+                  className="pt-2 mobile"
                 />
+              </div>
+            )}
+            
+            {/* Footer - only show on mobile below stops info */}
+            {isMobile && (
+              <div className="flex items-center justify-between px-3 py-4 mt-4 border-t">
+                <span className="text-xs text-muted-foreground">v1.0.0</span>
+                <ThemeToggle />
               </div>
             )}
           </SidebarGroupContent>
         </SidebarGroup>
       </div>
-
-      {/* Footer - only show on mobile */}
-      {isMobile && (
-        <div className="flex items-center justify-between px-2 py-4 border-t">
-          <span className="text-xs text-muted-foreground">v1.0.0</span>
-          <ThemeToggle />
-        </div>
-      )}
     </div>
   );
 }

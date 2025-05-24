@@ -57,7 +57,6 @@ export default function RouteStopsInfo({
   if (displayStops.length === 0) {
     return <p className="text-sm">No stops found for this route.</p>;
   }
-
   return (
     <div className={`space-y-2 ${className}`}>
       <p className="text-xs font-medium">
@@ -66,7 +65,7 @@ export default function RouteStopsInfo({
           <span className="ml-1 text-xs italic">(Circular route)</span>
         )}
       </p>
-      <div className="space-y-1 max-h-60 overflow-y-auto">
+      <div className={`space-y-1 ${className?.includes('mobile') ? '' : 'max-h-60 overflow-y-auto'}`}>
         {displayStops.map((stop, index) => {
           // For MRT feeder buses, the first stop is at index 1 (due to cloned last stop at index 0)
           // For Rapid Bus KL, the first stop is at index 0
